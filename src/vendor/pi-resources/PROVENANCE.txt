@@ -1,0 +1,37 @@
+Pi coding-agent resource and prompt-template port
+Upstream: https://github.com/badlogic/pi-mono
+Version: v0.51.6 / @mariozechner/pi-coding-agent@0.51.6
+Copyright (c) 2025 Mario Zechner, MIT License (LICENSE.txt alongside this file).
+
+Primary sources:
+packages/coding-agent/src/core/resource-loader.ts
+  loadContextFileFromDir, loadProjectContextFiles,
+  discoverSystemPromptFile, discoverAppendSystemPromptFile, dedupePrompts.
+packages/coding-agent/src/core/prompt-templates.ts
+  parseCommandArgs (same algorithm), substituteArgs (same syntax),
+  loadTemplateFromFile, non-recursive discovery, expandPromptTemplate.
+packages/coding-agent/src/core/system-prompt.ts
+  Custom/default prompt, appended prompt and Project Context output format.
+packages/coding-agent/src/utils/frontmatter.ts
+  Frontmatter removal and CRLF normalization conventions.
+
+Adapter: src/pi-resources.ts. No TUI, shell, npm package manager or runtime
+YAML dependency. Files are bounded UTF-8 text and symlink traversal stays within
+the selected directory. The global agentDir and extra prompt paths must be
+explicit absolute local paths; unlike upstream, the user's home is not scanned
+automatically. Project ancestors only check fixed AGENTS.md/CLAUDE.md names.
+
+Compatibility details:
+- Global context first, then ancestors from root to cwd; AGENTS.md wins over
+  CLAUDE.md within each directory. No recursive child instruction scan.
+- cwd/.pi/SYSTEM.md and APPEND_SYSTEM.md each override their global counterpart.
+- Prompt roots: configured global prompts, project .pi/prompts, explicit paths.
+  Each directory is non-recursive; duplicate names keep the first source.
+- description metadata supports plain/double/single quoted strings and YAML
+  folded/literal blocks. Full YAML collections/tags/aliases are not implemented.
+- Argument splitting follows upstream's quote handling, including no shell
+  escaping or command execution. Dollar substitutions use one pass to prevent
+  substituted argument strings containing $1, $@ or $ARGUMENTS being expanded
+  again (the upstream sequential replacements can do so in certain cases).
+- Slash name and arguments may be separated by a space or tab. Unknown slash
+  commands pass through unchanged. Expanded templates are limited to 256 KiB.

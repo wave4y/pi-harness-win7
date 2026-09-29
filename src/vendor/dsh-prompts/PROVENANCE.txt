@@ -1,0 +1,53 @@
+DeepSeek Harness built-in prompt persona / tool-guidance excerpts
+Upstream: https://github.com/deepseek-ai/deepseek-harness
+Pinned commit: 639ed015397290b3745d163aafe02ffee4aa3f84
+Copyright (c) 2026 DeepSeek. MIT License; see LICENSE.txt beside this file.
+
+Adapter module: src/dsh-prompts.ts
+
+Pinned source paths and excerpts:
+packages/bundle/web-app/presets/standard.patch.yml
+  persona.config.prefix and persona.config.suffix.
+packages/bundle/web-app/presets/minimal.patch.yml
+  persona.config.prefix, complete:true.
+packages/bundle/web-app/presets/ptc.patch.yml
+packages/bundle/web-app/presets/cordis.patch.yml
+  Source links and unavailable-preset metadata only; no claim of runtime support.
+packages/core/system-prompt/src/index.ts
+  Fixed identity and ordered section design (identity, persona, tool guidance,
+  environment suffix). The Cordis registry/runtime is not copied.
+packages/fs/tool-fs/src/read.ts
+  applyReadTool systemPrompt.section text.
+packages/fs/tool-fs/src/write.ts
+  applyWriteTool systemPrompt.section text.
+packages/fs/tool-fs/src/edit.ts
+  applyEditTool systemPrompt.section text.
+packages/fs/tool-fs-search/src/grep.ts
+  System-prompt guidance (also pinned verbatim in the Web system-prompt snapshot).
+packages/skill/tool-skill/src/index.ts
+  renderCatalog initial skill-loading guidance.
+snapshots/web/fresh-round-trip/system-prompt.expected.md
+  Cross-check of assembled persona and file-tool guidance.
+
+Compatibility changes (not verbatim upstream behavior):
+- The fixed harness identity names the real Pi Win7 Web runtime rather than
+  claiming that the application is running DeepSeek Harness.
+- Tool names read/write/edit/grep/skill map to read_file/write_file/edit_file/
+  search_files/read_skill. read offset/limit map to startLine/maxLines.
+- Remove shell comparisons from read/grep guidance. No Bash or PowerShell tools
+  are added. The server must append its actual no-shell and permission policy to
+  every selected persona and custom SYSTEM.md.
+- Remove claims that the DSH fs-observation-policy enforces read-before-write;
+  the behavior remains model guidance, while actual execution uses this app's
+  permission wrapper and local tool implementation.
+- Emit each guidance section only when the mapped tool is actually available.
+- The minimal persona retains its one-sentence complete-prompt text, but the
+  application's tools/permission policy are preserved. Its upstream persistent
+  shell composition is NOT available or enabled.
+- PTC and Cordis are catalogued as unavailable because their corresponding
+  run_code / dynamic-plugin runtime has not been ported. Switching to either is
+  rejected, rather than falsely advertising their original tools.
+
+These four upstream entries are agent compositions/presets. They are not a
+user-facing library of task templates. examples/prompts and Pi .pi/prompts
+support are separate adapter/Pi features, not original DSH preset prompts.

@@ -1,0 +1,7 @@
+* text=auto eol=lf
+*.vbs text eol=crlf
+*.woff binary
+*.woff2 binary
+*.png binary
+*.exe binary
+*.zip binary

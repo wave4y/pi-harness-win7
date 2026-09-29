@@ -1,0 +1,24 @@
+node_modules/
+.npm-cache/
+.state/
+.runtime/
+.test-tmp/
+.reference/
+dist/
+release/
+*.log
+
+# Local credentials and development environments
+.env
+.env.*
+!.env.example
+credentials.json
+credentials.json.bak
+extensions.json
+instance.lock*
+.venv/
+__pycache__/
+*.py[cod]
+extensions.json.bak
+credentials.json.corrupt-*
+extensions.json.corrupt-*

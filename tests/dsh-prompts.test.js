@@ -1,0 +1,36 @@
+'use strict';
+const assert = require('assert');
+const { renderDshPrompt, getDshPromptPresets, validDshPromptPreset } = require('../dist/dsh-prompts.cjs');
+const catalog = getDshPromptPresets();
+assert.deepStrictEqual(catalog.map(item => item.value), ['standard', 'minimal', 'ptc', 'cordis']);
+assert.deepStrictEqual(catalog.filter(item => item.available).map(item => item.value), ['standard', 'minimal']);
+for (const item of catalog) assert(item.source.includes('/639ed015397290b3745d163aafe02ffee4aa3f84/packages/bundle/web-app/presets/' + item.value + '.patch.yml'));
+for (const item of catalog.filter(item => !item.available)) {
+  assert(item.reason);
+  assert.throws(() => renderDshPrompt({ preset: item.value, model: 'test', workspace: 'D:\\project', tools: [] }), /尚未适配/);
+}
+assert.strictEqual(validDshPromptPreset('standard'), true);
+assert.strictEqual(validDshPromptPreset('minimal'), true);
+assert.strictEqual(validDshPromptPreset('other'), false);
+const tools = ['read_file', 'write_file', 'edit_file', 'search_files', 'read_skill'].map(name => ({ name }));
+const standard = renderDshPrompt({ preset: 'standard', model: 'custom-model', workspace: 'D:\\项目 空格', tools });
+assert(standard.includes('You are a coding agent powered by the custom-model model.'));
+assert(standard.includes('Your working directory is D:\\项目 空格.'));
+assert(standard.includes('startLine and maxLines'));
+assert(standard.includes('prefer edit_file for targeted changes'));
+assert(standard.includes('Use the search_files tool to search file contents. Use read_file'));
+assert(standard.includes('call the `read_skill` tool'));
+for (const unavailable of ['fs-observation-policy', 'run_code', 'subagent', 'web_search', 'job_output', 'bash', 'PowerShell', 'powered by DeepSeek Harness']) assert(!standard.includes(unavailable), unavailable + ' must not be advertised');
+const noTools = renderDshPrompt({ model: 'test', workspace: 'D:\\project', tools: [] });
+assert(!noTools.includes('read_file'));
+assert(!noTools.includes('read_skill'));
+const searchOnly = renderDshPrompt({ model: 'test', workspace: 'D:\\project', tools: [{ name: 'search_files' }] });
+assert(searchOnly.includes('search_files'));
+assert(!searchOnly.includes('read_file'));
+const writeOnly = renderDshPrompt({ model: 'test', workspace: 'D:\\project', tools: [{ name: 'write_file' }] });
+assert(!writeOnly.includes('edit_file'));
+assert.strictEqual(renderDshPrompt({ preset: 'minimal', model: 'test', workspace: 'D:\\project', tools }), 'You are a helpful software engineer assistant.');
+assert(renderDshPrompt({ model: '{{cwd}} $&', workspace: 'D:\\{{model}}', tools: [] }).includes('powered by the {{cwd}} $& model.'));
+catalog[0].available = false;
+assert.strictEqual(getDshPromptPresets()[0].available, true);
+console.log('PASS DSH pinned personas, available-tool guidance, literal variables, unavailable preset rejection and catalog isolation.');

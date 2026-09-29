@@ -1,0 +1,10 @@
+Pi coding-agent v0.51.6
+Source: https://github.com/badlogic/pi-mono/tree/v0.51.6/packages/coding-agent
+Npm tarball shasum: 97448b940854f16deb6bb144cb2fa4fdb88e3e73
+MIT: Copyright (c) 2025 Mario Zechner; full license in dist/THIRD_PARTY_NOTICES.txt.
+Session manager, message conversion and event bus reused from original TypeScript sources embedded in official source maps. Only session-manager imports for randomUUID, fs/promises and config defaults are redirected to Node12 compatibility shims. No TUI or Bash executor is loaded.
+
+truncate.ts is copied verbatim from packages/coding-agent/src/core/tools/truncate.ts,
+embedded as sourcesContent in the same official 0.51.6 npm source map. It has no
+runtime imports. The MCP adapter uses its truncateHead with the existing 64 KiB
+maximum plus a 2000-line bound, preserving whole lines and reporting truncation.
