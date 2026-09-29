@@ -1,0 +1,36 @@
+---
+name: portable-python
+description: 使用 Agent 随包的 Python 处理 HTTP 请求、CSV/Excel 数据、Word DOCX、PowerPoint PPTX 和基础图片；依赖可用的 run_python 工具。
+---
+
+# 便携 Python
+
+这是下一版内置 Skill 的设计稿，当前 0.5.0 尚未附带 Python。实际使用前检查工具列表中的 `run_python`；缺失时说明需要带 Python 的版本，不假设系统已安装 Python，也不自行下载解释器或安装包。
+
+## 调用方式
+
+1. 按需要读取用户指定的输入文件，确认输出位置。用 `write_file` 将 Python 3.8 兼容脚本保存到当前工作目录，例如 `.agent-python/task.py`。
+2. 调用 `run_python`，提交 `script` 相对路径、字符串数组 `args`，必要时设置 `cwd` 和 `timeoutMs`。解释器由宿主选择；不要填写绝对安装目录、使用 `python` PATH 搜索、激活虚拟环境，或启动 CMD/PowerShell。
+3. 使用 UTF-8 文本与 `pathlib.Path` 处理中文路径。不要采用 Python 3.9+ 才有的语法/API，例如 `str.removeprefix` 或运行时内置泛型标注；需要注解时使用 `typing`。
+4. 工具仍遵循当前审批模式。拒绝执行后不要改用另一进程工具绕过。Python 使用当前 Windows 用户权限，不是文件沙箱。
+
+## 选择包
+
+| 任务 | 安装分发名 | Python 导入名 | 做法 |
+| --- | --- | --- | --- |
+| HTTP/JSON | requests | requests | 设置连接和读取超时，保留 TLS 验证；大响应分块读取；不要打印认证头或密钥 |
+| CSV、表格统计 | pandas、numpy | pandas、numpy | 明确编码、分隔符、日期与缺失值；输出行数/列名便于核对 |
+| Excel XLSX | openpyxl、XlsxWriter | openpyxl、xlsxwriter | 编辑现有工作簿用 openpyxl；生成新工作簿可用 XlsxWriter；复杂原有格式不要只经 DataFrame 往返 |
+| Word DOCX | python-docx | docx | 处理 OOXML，不依赖已安装的 Microsoft Word；不要安装名称为 docx 的另一个分发包 |
+| PowerPoint PPTX | python-pptx | pptx | 处理 OOXML，不依赖已安装的 PowerPoint；不要安装名称为 pptx 的另一个分发包 |
+| 图片 | Pillow | PIL | 按实际需要读取/缩放/转换；不假设当前可用额外格式插件 |
+| XML/HTML | lxml | lxml | 对非可信 XML 禁止外部实体和网络解析 |
+
+使用运行时清单中的实际版本；缺包或 DLL 导入失败时报告具体包名和错误，不在目标 Win7 上临时 `pip install`，也不把安装成功当作系统兼容证明。
+
+## 检查结果
+
+- 默认将新产物保存为新文件。需要覆盖用户原文件时，先确认当前请求确实要求覆盖。
+- XLSX 保存后重新打开，检查关键工作表、行列和公式；DOCX 检查段落/表格；PPTX 检查页数及目标文本；图片重新加载检查尺寸和格式。检查失败不得报告已完成。
+- docx/pptx 成功重新打开只证明文件结构可读，不证明 Office 排版正确。本包未承诺随附 Office 或 PDF 渲染器；有可用渲染工具时再做视觉检查，并如实说明检查范围。
+- 完成后报告输出文件的真实路径和实际验证结果。外部网络写入、上传或发送文件依然需要用户对该动作的授权，安装了 requests 不代表已有授权。
