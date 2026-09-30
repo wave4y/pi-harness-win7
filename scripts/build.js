@@ -109,7 +109,7 @@ function writeNotices(packages) {
 async function main() {
   fs.mkdirSync(output, { recursive: true });
   const results = {};
-  const entries = { server: 'src/server.ts', persistence: 'src/persistence.ts', 'session-stats': 'src/session-stats.ts', tools: 'src/local-tools.ts', folders: 'src/folder-browser.ts', context: 'src/context.ts', permissions: 'src/permissions.ts', mcp: 'src/mcp.ts', skills: 'src/skills.ts', compaction: 'src/compaction.ts', session: 'src/pi-session.ts', provider: 'src/provider.ts', 'pi-resources': 'src/pi-resources.ts', 'dsh-prompts': 'src/dsh-prompts.ts' };
+  const entries = { server: 'src/server.ts', persistence: 'src/persistence.ts', 'session-stats': 'src/session-stats.ts', tools: 'src/local-tools.ts', 'python-runtime': 'src/python-runtime.ts', folders: 'src/folder-browser.ts', context: 'src/context.ts', permissions: 'src/permissions.ts', mcp: 'src/mcp.ts', skills: 'src/skills.ts', compaction: 'src/compaction.ts', session: 'src/pi-session.ts', provider: 'src/provider.ts', 'pi-resources': 'src/pi-resources.ts', 'dsh-prompts': 'src/dsh-prompts.ts' };
   for (const name of Object.keys(entries)) {
     const result = await esbuild.build({
       absWorkingDir: root,

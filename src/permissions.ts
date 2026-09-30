@@ -32,6 +32,7 @@ export function approvalReason(mode: PermissionMode, workspace: string, tool: an
   if (mode === 'danger-full-access') return null;
   if (tool.mcpServerId) return 'MCP 工具在外部服务或进程中执行，需要确认本次调用。';
   if (tool.name === 'read_skill') return null; // Only enumerated, bounded, user-configured skill roots.
+  if (tool.name === 'run_python') return 'Python 脚本可访问本机文件、网络和启动子进程，不受工作区文件边界限制，需要确认解释器、脚本、工作目录和参数。';
   if (tool.name === 'run_process') return '直接运行的程序不受工作区文件边界限制，需要确认程序和参数。';
   if (outsideWorkspace(workspace, args.path === undefined ? '.' : args.path)) return '此操作访问工作区以外的路径，需要确认。';
   if (['read_file', 'list_directory', 'search_files'].includes(tool.name)) return null;

@@ -8,9 +8,9 @@
 
 ## 使用便携包
 
-升级到 0.6.0 时，先关闭旧版本的 Node 窗口，再运行新版启动器。新版固定使用 `%LOCALAPPDATA%\PiWin7Web`（无此变量时使用 `%APPDATA%\PiWin7Web`），以后换解压目录不会换数据目录。同一数据目录只能运行一个新版服务。
+升级到 0.7.0 时，先关闭旧版本的 Node 窗口，再运行新版启动器。新版固定使用 `%LOCALAPPDATA%\PiWin7Web`（无此变量时使用 `%APPDATA%\PiWin7Web`），以后换解压目录不会换数据目录。同一数据目录只能运行一个新版服务。
 
-1. 解压 `release/pi-win7-web-0.6.0-x64.zip` 到可写的短路径，例如 `D:\PiWeb`。
+1. 解压 `release/pi-win7-web-0.7.0-x64.zip` 到可写的短路径，例如 `D:\PiWeb`。
 2. 双击 `launch.vbs`。启动器直接运行随包提供的 `runtime/node.exe`，不启动 CMD 或 PowerShell。
 3. 在 Chrome 102 打开 `http://127.0.0.1:3080`。启动器会尝试使用系统默认浏览器；默认浏览器不是 Chrome 时手动打开此地址。
 4. 点击工作目录入口或设置中的“浏览”，在文件夹选择器里选择磁盘和目录，再确认。模型设置中填写模型 ID、OpenAI Chat Completions 兼容 API 地址和 API Key。
@@ -33,7 +33,7 @@ API Key 在设置中保存一次后，重启和升级都能继续使用。Key �
 - 文件目录浏览、UTF-8 文本查看和编辑、改动对比、保存前检查外部修改。
 - Pi 自动循环：接收任务 → 调用模型 → 验证工具参数 → 执行工具 → 回传结果 → 继续回答。
 - 文件工具：列目录、读取指定行、内容搜索、创建目录、写文件、精确替换。
-- 程序工具：直接运行允许的可执行文件，展示标准输出/错误、退出码，支持超时和取消。
+- 程序工具：直接运行允许的可执行文件；run_python 使用内置 Python 与数据/文档依赖，展示标准输出/错误、退出码，支持超时和取消。
 - DSH 权限选择：仅可查看、工作区内修改、完全权限；后台审批与取消。
 - MCP：Streamable HTTP / stdio 连接、工具发现、工具调用和逐次审批。
 - Skills：发现 SKILL.md、按需加载指令与支持文件、启用开关和附加目录。
@@ -44,6 +44,22 @@ API Key 在设置中保存一次后，重启和升级都能继续使用。Key �
 - 只监听 `127.0.0.1`，请求令牌、Host/Origin 检查、CSP、路径越界和符号链接检查。
 
 网页文件编辑器范围是选定工作目录；Agent 的文件范围由权限模式控制。当前只处理 UTF-8 文本，拒绝二进制、UTF-16 和 GBK 文件，避免静默损坏原文；单文件上限 1 MiB。搜索、日志和网络响应都有大小限制。目录浏览最多 1000 项，搜索结果会注明是否截断。
+
+## 便携 Python（0.7.0 预发布）
+
+x64 包内置 CPython 3.8.10，附带 20 个锁定版本的依赖：requests、pandas、NumPy、python-docx、python-pptx、openpyxl、XlsxWriter、Pillow、lxml 及其依赖。无需安装系统 Python、pip、Office 或配置 PATH。**这是供 Win7 SP1 实测的验收包，尚未通过 Win7 实机认证。** Python 3.8 和随带 OpenSSL 已停止维护；原生包的加载仍取决于目标电脑的系统更新和 C Runtime。
+
+1. 打开“设置 → Python”，点击“检查运行环境”。只有实际启动解释器、检查隔离配置并成功导入全部依赖后才显示“自检通过”；可展开查看版本、TLS 和逐项错误。
+2. 点击“试用文档与图片工具”，示例任务会放入输入框，发送后由 Agent 读取内置 portable-python Skill 并运行离线自检。也可直接提出“把这个 CSV 整理成 Excel，并生成 Word 报告”。
+3. 在“仅可查看”和“工作区内修改”模式下，每次 run_python 都需批准，卡片显示解释器、脚本、参数和工作目录；完全权限模式直接执行。文档示例在当前目录下新建唯一输出文件夹，生成并重新打开 CSV、XLSX、DOCX、PPTX、PNG/JPEG，不覆盖原文件。
+
+内置 Skill 随程序保存在 builtin-skills/portable-python，在所有工作目录中可发现，不需要手工添加。它按需加载数据、Word、PPT、图片和网络示例；同名内置 Skill 优先于项目 Skill。关闭 Skills 会停止注入目录和 read_skill，但不会禁用独立的 run_python 工具。
+
+run_python 接受已保存的脚本路径、逐项参数、工作目录和 100–120000 ms 超时；固定使用随包解释器的隔离、UTF-8、无缓冲和禁止字节码缓存模式，不接受任意解释器、环境覆盖或 Shell 命令。标准输出与错误合计上限 64 KiB，支持取消；子进程不继承 API_KEY/TOKEN/PASSWORD 等常见凭据变量及 Python 注入环境。脚本仍有当前 Windows 用户的文件与网络权限，取消只处理直接子进程。
+
+环境自检通过仅说明依赖可加载；文档往返验证检查文件结构，不代表 Office 渲染、中文字体或分页验收。Word/PPT 不包含 Office COM、PDF 渲染或 Office 安装。遇到 DLL、证书或原生模块错误，请复制“自检详情”及目标系统信息；不要用关闭证书验证作为修复。清单、许可证、逐文件 SHA256 和 DLL 导入报告位于 runtime/python38-x64。
+
+详细基线与 Win7 验收项目见 [便携 Python 设计](docs/PYTHON-PORTABLE-PLAN.md)，实际技能见 [portable-python](builtin-skills/portable-python/SKILL.md)。
 
 ## 会话统计
 
@@ -131,16 +147,19 @@ stdio 要求绝对可执行文件路径。不能直接填 npx、.cmd 或 Shell�
 
 ```text
 npm ci
+node scripts/fetch-runtime.js
+npm run fetch:python
 npm run build
 npm test
-node scripts/fetch-runtime.js
 .runtime\x64\node.exe scripts/test-runtime.js
 npm run package
 ```
 
 `fetch-runtime.js` 从 Node 官方站点下载 12.22.12 的 `node.exe`，核对同站 `SHASUMS256.txt`，并附带完整 Node 许可证和运行时元数据。`package.js` 再次校验 SHA-256，并将运行时、前后端、许可证和启动器复制到 `release`。若对应版本输出目录非空会停止，避免旧工作文件混入重新打包。不复制 `.state`、密钥、工作文件或开发依赖。
 
-32 位包可以通过 `node scripts/fetch-runtime.js --x86` 和 `node scripts/package.js --x86` 单独生成；需要在目标 32 位系统另外验证。
+0.7.0 完整便携包仅支持 x64；打包器拒绝把 x64 Python 混入 x86 包。
+
+Python 构建在现代 Windows x64 上执行：`fetch-python.js` 下载官方 ZIP 与精确 wheel，校验锁文件 SHA256、官方 Python PGP 签名，然后用隔离的构建解释器和固定 pip 离线安装并核验依赖。需要构建机有 GPG（例如 Git for Windows 自带版本，或 `--gpg` 显式指定）；不修改系统 Python，不向用户运行时安装 pip。再次构建可用 `node scripts/fetch-python.js --offline` 复用已核验缓存。独立验证：`node scripts/python/test-build.js`（ZIP/PE 解析边界）与 `node scripts/python/verify-runtime.js`（完整性、中文路径搬迁、文档和本地 HTTP）。打包再次校验全部 Python 文件，拒绝缺失、改动或多余内容。
 
 开发启动：`npm start`。可用参数：`--workspace`、`--port`、`--state-dir` 和可重复的 `--allow-exe`。模型环境变量：`PI_BASE_URL`、`PI_MODEL`、`PI_API_KEY`。未指定工作目录且没有已保存设置时，默认使用固定数据目录中的 `workspace`；开发隔离测试可传 `--state-dir` 与 `--workspace`。
 
@@ -149,7 +168,7 @@ npm run package
 - 锁定 Pi 0.51.6，真实使用其 `Agent`、agent loop、事件流和 AJV 工具参数验证。
 - 只在构建时将 `pi-ai` 的宽入口替换为所需的真实 Pi 模块；不加载现代供应商 SDK。
 - 自定义 `streamFn` 用 Node 原生 `http/https` 实现 SSE、工具调用片段拼接、取消和错误收尾。
-- esbuild 将服务端打包为 Node 12.22 可执行的独立 CJS，补齐 `AbortController` 和 `structuredClone`；运行时不依赖 `node_modules` 或原生扩展。
+- esbuild 将服务端打包为 Node 12.22 可执行的独立 CJS，补齐 `AbortController` 和 `structuredClone`；Node 服务不依赖 `node_modules` 或原生 Node 扩展；Python 包含清单中记录的原生 DLL/PYD。
 - 前端使用浏览器原生功能，不依赖 CDN；以 Chrome 102 为构建目标，不使用现代文件系统授权 API 来替代后端。
 - 自动化集成测试使用本地模拟模型服务，覆盖真实 Pi 文件工具调用和后续模型回合，不消耗 API 额度。
 - Node 12.22.12 的官方构建曾支持 Win7；该运行时已停止维护。便携兼容路线的代价是维护旧运行时。服务限定本机访问，仍需要对真实模型端点的 TLS、企业证书和代理另行验收。

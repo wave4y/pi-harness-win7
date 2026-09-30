@@ -15,7 +15,7 @@ export interface SkillInfo {
   path: string;
   directory: string;
   root: string;
-  source: 'workspace' | 'additional';
+  source: 'workspace' | 'additional' | 'builtin';
 }
 
 function inside(root: string, candidate: string): boolean {
@@ -77,11 +77,13 @@ export function validateSkillDirectories(input: unknown): string[] {
   });
 }
 
-export function discoverSkills(workspace: string, extraDirectories: string[] = []): { skills: SkillInfo[]; warnings: string[] } {
+export function discoverSkills(workspace: string, extraDirectories: string[] = [], builtinDirectories: string[] = []): { skills: SkillInfo[]; warnings: string[] } {
   const workspaceReal = realpath(workspace);
   const skills: SkillInfo[] = [], warnings: string[] = [];
   const seenPaths = new Set<string>(), seenNames = new Set<string>();
   const roots = [
+    // Bundled names stay available in every workspace, independent of user directories.
+    ...builtinDirectories.map(value => ({ path: value, source: 'builtin' as const })),
     { path: path.join(workspaceReal, '.agents', 'skills'), source: 'workspace' as const },
     { path: path.join(workspaceReal, '.pi', 'skills'), source: 'workspace' as const },
     ...validateSkillDirectories(extraDirectories).map(value => ({ path: value, source: 'additional' as const }))
@@ -157,7 +159,7 @@ export function createSkillTools(skills: SkillInfo[]): any[] {
       const skill = skills.find(item => item.id === args.skill || item.name === args.skill);
       if (!skill) throw new Error('Unknown skill. Choose a skill listed in the available skills catalog.');
       const loaded = readSkill(skill, args.path === undefined ? 'SKILL.md' : args.path);
-      return { content: [{ type: 'text', text: loaded.content }], details: { name: loaded.name, path: loaded.path } };
+      return { content: [{ type: 'text', text: loaded.content }, { type: 'text', text: 'Skill resource location: ' + JSON.stringify({ skillDirectory: skill.directory, resourcePath: loaded.path }) }], details: { name: loaded.name, path: loaded.path } };
     }
   }];
 }

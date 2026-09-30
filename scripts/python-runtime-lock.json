@@ -1,0 +1,452 @@
+{
+  "schemaVersion": 1,
+  "runtimeId": "python38-x64",
+  "python": {
+    "version": "3.8.10",
+    "architecture": "x64",
+    "filename": "python-3.8.10-embed-amd64.zip",
+    "url": "https://www.python.org/ftp/python/3.8.10/python-3.8.10-embed-amd64.zip",
+    "sha256": "abbe314e9b41603dde0a823b76f5bbbe17b3de3e5ac4ef06b759da5466711271",
+    "size": 8211403,
+    "md5": "3acb1d7d9bde5a79f840167b166bb633",
+    "signature": {
+      "url": "https://www.python.org/ftp/python/3.8.10/python-3.8.10-embed-amd64.zip.asc",
+      "filename": "python-3.8.10-embed-amd64.zip.asc",
+      "sha256": "4974b121e96178b5b5949a3294ce3532718b7aab936f16c63fe19d4b4b0f1c00",
+      "size": 836,
+      "fingerprint": "7ED10B6531D7C8E1BC296021FC624643487034E5",
+      "keyFile": "python/steve-dower.asc",
+      "keySha256": "6540096672a54a25e30f37e8700b98a94ba79b047b96a38df91db798f94a38e9",
+      "keySource": "https://keybase.io/stevedower/pgp_keys.asc?fingerprint=7ed10b6531d7c8e1bc296021fc624643487034e5",
+      "authority": "https://www.python.org/downloads/metadata/pgp/"
+    }
+  },
+  "buildOnly": {
+    "name": "pip",
+    "version": "25.0.1",
+    "filename": "pip-25.0.1-py3-none-any.whl",
+    "url": "https://files.pythonhosted.org/packages/c9/bc/b7db44f5f39f9d0494071bddae6880eb645970366d0a200022a1a93d57f5/pip-25.0.1-py3-none-any.whl",
+    "sha256": "c46efd13b6aa8279f33f2864459c8ce587ea6a1a59ee20de055868d8f7688f7f",
+    "size": 1841526
+  },
+  "packages": [
+    {
+      "name": "requests",
+      "version": "2.32.4",
+      "filename": "requests-2.32.4-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/7c/e4/56027c4a6b4ae70ca9de302488c5ca95ad4a39e190093d6c1a8ace08341b/requests-2.32.4-py3-none-any.whl",
+      "sha256": "27babd3cda2a6d50b30443204ee89830707d396671944c998b5975b031ac2b2c",
+      "size": 64847,
+      "requiresPython": ">=3.8",
+      "requiresDist": [
+        "charset_normalizer<4,>=2",
+        "idna<4,>=2.5",
+        "urllib3<3,>=1.21.1",
+        "certifi>=2017.4.17",
+        "PySocks!=1.5.7,>=1.5.6; extra == \"socks\"",
+        "chardet<6,>=3.0.2; extra == \"use-chardet-on-py3\""
+      ],
+      "license": "Apache-2.0",
+      "imports": [
+        "requests"
+      ]
+    },
+    {
+      "name": "urllib3",
+      "version": "2.2.3",
+      "filename": "urllib3-2.2.3-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/ce/d9/5f4c13cecde62396b0d3fe530a50ccea91e7dfc1ccf0e09c228841bb5ba8/urllib3-2.2.3-py3-none-any.whl",
+      "sha256": "ca899ca043dcb1bafa3e262d73aa25c465bfb49e0bd9dd5d59f1d0acba2f8fac",
+      "size": 126338,
+      "requiresPython": ">=3.8",
+      "requiresDist": [
+        "brotli>=1.0.9; platform_python_implementation == \"CPython\" and extra == \"brotli\"",
+        "brotlicffi>=0.8.0; platform_python_implementation != \"CPython\" and extra == \"brotli\"",
+        "h2<5,>=4; extra == \"h2\"",
+        "pysocks!=1.5.7,<2.0,>=1.5.6; extra == \"socks\"",
+        "zstandard>=0.18.0; extra == \"zstd\""
+      ],
+      "license": "",
+      "imports": [
+        "urllib3"
+      ]
+    },
+    {
+      "name": "charset-normalizer",
+      "version": "3.4.4",
+      "filename": "charset_normalizer-3.4.4-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/0a/4c/925909008ed5a988ccbb72dcc897407e5d6d3bd72410d69e051fc0c14647/charset_normalizer-3.4.4-py3-none-any.whl",
+      "sha256": "7a32c560861a02ff789ad905a2fe94e3f840803362c84fecf1851cb4cf3dc37f",
+      "size": 53402,
+      "requiresPython": ">=3.7",
+      "requiresDist": [],
+      "license": "MIT",
+      "imports": [
+        "charset_normalizer"
+      ]
+    },
+    {
+      "name": "idna",
+      "version": "3.10",
+      "filename": "idna-3.10-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/76/c6/c88e154df9c4e1a2a66ccf0005a88dfb2650c1dffb6f5ce603dfbd452ce3/idna-3.10-py3-none-any.whl",
+      "sha256": "946d195a0d259cbba61165e88e65941f16e9b36ea6ddb97f00452bae8b1287d3",
+      "size": 70442,
+      "requiresPython": ">=3.6",
+      "requiresDist": [
+        "ruff>=0.6.2; extra == \"all\"",
+        "mypy>=1.11.2; extra == \"all\"",
+        "pytest>=8.3.2; extra == \"all\"",
+        "flake8>=7.1.1; extra == \"all\""
+      ],
+      "license": "",
+      "imports": [
+        "idna"
+      ]
+    },
+    {
+      "name": "certifi",
+      "version": "2026.7.22",
+      "filename": "certifi-2026.7.22-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/0b/a7/71ac2cff56fec219ed242bb11b8efb69fcc4bec75db06fb7bfe35de520e6/certifi-2026.7.22-py3-none-any.whl",
+      "sha256": "62f22742b58a1a33014a2b6b706588a8d7e2a88ae7bd1a6ebe8c992928483775",
+      "size": 136983,
+      "requiresPython": ">=3.7",
+      "requiresDist": [],
+      "license": "MPL-2.0",
+      "imports": [
+        "certifi"
+      ]
+    },
+    {
+      "name": "numpy",
+      "version": "1.23.5",
+      "filename": "numpy-1.23.5-cp38-cp38-win_amd64.whl",
+      "url": "https://files.pythonhosted.org/packages/4c/42/6274f92514fbefcb1caa66d56d82ac7ac89f7652c0cef1e159a4b79e09f1/numpy-1.23.5-cp38-cp38-win_amd64.whl",
+      "sha256": "ca51fcfcc5f9354c45f400059e88bc09215fb71a48d3768fb80e357f3b457e1e",
+      "size": 14672878,
+      "requiresPython": ">=3.8",
+      "requiresDist": [],
+      "license": "BSD",
+      "imports": [
+        "numpy"
+      ]
+    },
+    {
+      "name": "pandas",
+      "version": "2.0.3",
+      "filename": "pandas-2.0.3-cp38-cp38-win_amd64.whl",
+      "url": "https://files.pythonhosted.org/packages/c3/6c/ea362eef61f05553aaf1a24b3e96b2d0603f5dc71a3bd35688a24ed88843/pandas-2.0.3-cp38-cp38-win_amd64.whl",
+      "sha256": "69d7f3884c95da3a31ef82b7618af5710dba95bb885ffab339aad925c3e8ce78",
+      "size": 10777638,
+      "requiresPython": ">=3.8",
+      "requiresDist": [
+        "python-dateutil (>=2.8.2)",
+        "pytz (>=2020.1)",
+        "tzdata (>=2022.1)",
+        "numpy (>=1.20.3) ; python_version < \"3.10\"",
+        "numpy (>=1.21.0) ; python_version >= \"3.10\"",
+        "numpy (>=1.23.2) ; python_version >= \"3.11\"",
+        "beautifulsoup4 (>=4.9.3) ; extra == 'all'",
+        "bottleneck (>=1.3.2) ; extra == 'all'",
+        "brotlipy (>=0.7.0) ; extra == 'all'",
+        "fastparquet (>=0.6.3) ; extra == 'all'",
+        "fsspec (>=2021.07.0) ; extra == 'all'",
+        "gcsfs (>=2021.07.0) ; extra == 'all'",
+        "html5lib (>=1.1) ; extra == 'all'",
+        "hypothesis (>=6.34.2) ; extra == 'all'",
+        "jinja2 (>=3.0.0) ; extra == 'all'",
+        "lxml (>=4.6.3) ; extra == 'all'",
+        "matplotlib (>=3.6.1) ; extra == 'all'",
+        "numba (>=0.53.1) ; extra == 'all'",
+        "numexpr (>=2.7.3) ; extra == 'all'",
+        "odfpy (>=1.4.1) ; extra == 'all'",
+        "openpyxl (>=3.0.7) ; extra == 'all'",
+        "pandas-gbq (>=0.15.0) ; extra == 'all'",
+        "psycopg2 (>=2.8.6) ; extra == 'all'",
+        "pyarrow (>=7.0.0) ; extra == 'all'",
+        "pymysql (>=1.0.2) ; extra == 'all'",
+        "PyQt5 (>=5.15.1) ; extra == 'all'",
+        "pyreadstat (>=1.1.2) ; extra == 'all'",
+        "pytest (>=7.3.2) ; extra == 'all'",
+        "pytest-xdist (>=2.2.0) ; extra == 'all'",
+        "pytest-asyncio (>=0.17.0) ; extra == 'all'",
+        "python-snappy (>=0.6.0) ; extra == 'all'",
+        "pyxlsb (>=1.0.8) ; extra == 'all'",
+        "qtpy (>=2.2.0) ; extra == 'all'",
+        "scipy (>=1.7.1) ; extra == 'all'",
+        "s3fs (>=2021.08.0) ; extra == 'all'",
+        "SQLAlchemy (>=1.4.16) ; extra == 'all'",
+        "tables (>=3.6.1) ; extra == 'all'",
+        "tabulate (>=0.8.9) ; extra == 'all'",
+        "xarray (>=0.21.0) ; extra == 'all'",
+        "xlrd (>=2.0.1) ; extra == 'all'",
+        "xlsxwriter (>=1.4.3) ; extra == 'all'",
+        "zstandard (>=0.15.2) ; extra == 'all'",
+        "s3fs (>=2021.08.0) ; extra == 'aws'",
+        "PyQt5 (>=5.15.1) ; extra == 'clipboard'",
+        "qtpy (>=2.2.0) ; extra == 'clipboard'",
+        "brotlipy (>=0.7.0) ; extra == 'compression'",
+        "python-snappy (>=0.6.0) ; extra == 'compression'",
+        "zstandard (>=0.15.2) ; extra == 'compression'",
+        "scipy (>=1.7.1) ; extra == 'computation'",
+        "xarray (>=0.21.0) ; extra == 'computation'",
+        "odfpy (>=1.4.1) ; extra == 'excel'",
+        "openpyxl (>=3.0.7) ; extra == 'excel'",
+        "pyxlsb (>=1.0.8) ; extra == 'excel'",
+        "xlrd (>=2.0.1) ; extra == 'excel'",
+        "xlsxwriter (>=1.4.3) ; extra == 'excel'",
+        "pyarrow (>=7.0.0) ; extra == 'feather'",
+        "fsspec (>=2021.07.0) ; extra == 'fss'",
+        "gcsfs (>=2021.07.0) ; extra == 'gcp'",
+        "pandas-gbq (>=0.15.0) ; extra == 'gcp'",
+        "tables (>=3.6.1) ; extra == 'hdf5'",
+        "beautifulsoup4 (>=4.9.3) ; extra == 'html'",
+        "html5lib (>=1.1) ; extra == 'html'",
+        "lxml (>=4.6.3) ; extra == 'html'",
+        "SQLAlchemy (>=1.4.16) ; extra == 'mysql'",
+        "pymysql (>=1.0.2) ; extra == 'mysql'",
+        "jinja2 (>=3.0.0) ; extra == 'output_formatting'",
+        "tabulate (>=0.8.9) ; extra == 'output_formatting'",
+        "pyarrow (>=7.0.0) ; extra == 'parquet'",
+        "bottleneck (>=1.3.2) ; extra == 'performance'",
+        "numba (>=0.53.1) ; extra == 'performance'",
+        "numexpr (>=2.7.1) ; extra == 'performance'",
+        "matplotlib (>=3.6.1) ; extra == 'plot'",
+        "SQLAlchemy (>=1.4.16) ; extra == 'postgresql'",
+        "psycopg2 (>=2.8.6) ; extra == 'postgresql'",
+        "pyreadstat (>=1.1.2) ; extra == 'spss'",
+        "SQLAlchemy (>=1.4.16) ; extra == 'sql-other'",
+        "hypothesis (>=6.34.2) ; extra == 'test'",
+        "pytest (>=7.3.2) ; extra == 'test'",
+        "pytest-xdist (>=2.2.0) ; extra == 'test'",
+        "pytest-asyncio (>=0.17.0) ; extra == 'test'",
+        "lxml (>=4.6.3) ; extra == 'xml'"
+      ],
+      "license": "BSD 3-Clause License  Copyright (c) 2008-2011, AQR Capital Management, LLC, Lambda Foundry, Inc. and PyData Development Team All rights reserved.  Copyright (c) 2011-2023, Open source contributors.  Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:  * Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.  * Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.  * Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. ",
+      "imports": [
+        "pandas"
+      ]
+    },
+    {
+      "name": "python-dateutil",
+      "version": "2.9.0.post0",
+      "filename": "python_dateutil-2.9.0.post0-py2.py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/ec/57/56b9bcc3c9c6a792fcbaf139543cee77261f3651ca9da0c93f5c1221264b/python_dateutil-2.9.0.post0-py2.py3-none-any.whl",
+      "sha256": "a8b2bc7bffae282281c8140a97d3aa9c14da0b136dfe83f850eea9a5f7470427",
+      "size": 229892,
+      "requiresPython": "!=3.0.*,!=3.1.*,!=3.2.*,>=2.7",
+      "requiresDist": [
+        "six >=1.5"
+      ],
+      "license": "Dual License",
+      "imports": [
+        "dateutil"
+      ]
+    },
+    {
+      "name": "six",
+      "version": "1.17.0",
+      "filename": "six-1.17.0-py2.py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl",
+      "sha256": "4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274",
+      "size": 11050,
+      "requiresPython": "!=3.0.*,!=3.1.*,!=3.2.*,>=2.7",
+      "requiresDist": [],
+      "license": "MIT",
+      "imports": [
+        "six"
+      ]
+    },
+    {
+      "name": "pytz",
+      "version": "2025.2",
+      "filename": "pytz-2025.2-py2.py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/81/c4/34e93fe5f5429d7570ec1fa436f1986fb1f00c3e0f43a589fe2bbcd22c3f/pytz-2025.2-py2.py3-none-any.whl",
+      "sha256": "5ddf76296dd8c44c26eb8f4b6f35488f3ccbf6fbbd7adee0b7262d43f0ec2f00",
+      "size": 509225,
+      "requiresPython": null,
+      "requiresDist": [],
+      "license": "MIT",
+      "imports": [
+        "pytz"
+      ]
+    },
+    {
+      "name": "tzdata",
+      "version": "2025.2",
+      "filename": "tzdata-2025.2-py2.py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/5c/23/c7abc0ca0a1526a0774eca151daeb8de62ec457e77262b66b359c3c7679e/tzdata-2025.2-py2.py3-none-any.whl",
+      "sha256": "1a403fada01ff9221ca8044d701868fa132215d84beb92242d9acd2147f667a8",
+      "size": 347839,
+      "requiresPython": ">=2",
+      "requiresDist": [],
+      "license": "Apache-2.0",
+      "imports": [
+        "tzdata"
+      ]
+    },
+    {
+      "name": "python-docx",
+      "version": "1.1.2",
+      "filename": "python_docx-1.1.2-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/3e/3d/330d9efbdb816d3f60bf2ad92f05e1708e4a1b9abe80461ac3444c83f749/python_docx-1.1.2-py3-none-any.whl",
+      "sha256": "08c20d6058916fb19853fcf080f7f42b6270d89eac9fa5f8c15f691c0017fabe",
+      "size": 244315,
+      "requiresPython": ">=3.7",
+      "requiresDist": [
+        "lxml>=3.1.0",
+        "typing-extensions>=4.9.0"
+      ],
+      "license": "MIT",
+      "imports": [
+        "docx"
+      ]
+    },
+    {
+      "name": "python-pptx",
+      "version": "1.0.2",
+      "filename": "python_pptx-1.0.2-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/d9/4f/00be2196329ebbff56ce564aa94efb0fbc828d00de250b1980de1a34ab49/python_pptx-1.0.2-py3-none-any.whl",
+      "sha256": "160838e0b8565a8b1f67947675886e9fea18aa5e795db7ae531606d68e785cba",
+      "size": 472788,
+      "requiresPython": ">=3.8",
+      "requiresDist": [
+        "Pillow>=3.3.2",
+        "XlsxWriter>=0.5.7",
+        "lxml>=3.1.0",
+        "typing-extensions>=4.9.0"
+      ],
+      "license": "MIT",
+      "imports": [
+        "pptx"
+      ]
+    },
+    {
+      "name": "lxml",
+      "version": "6.1.3",
+      "filename": "lxml-6.1.3-cp38-cp38-win_amd64.whl",
+      "url": "https://files.pythonhosted.org/packages/8e/e5/49829d6d7b1c951d5dcb4a371f283d45760d5e1918483cfabb5cc6c7b5c9/lxml-6.1.3-cp38-cp38-win_amd64.whl",
+      "sha256": "d44442effeb8781f392340c5dc8c6716fba41dbeacb82fd4c0f09026fb5ff682",
+      "size": 4039743,
+      "requiresPython": ">=3.8",
+      "requiresDist": [
+        "cssselect>=0.7; extra == \"cssselect\"",
+        "html5lib; extra == \"html5\"",
+        "BeautifulSoup4; extra == \"htmlsoup\"",
+        "lxml_html_clean; extra == \"html-clean\""
+      ],
+      "license": "BSD-3-Clause",
+      "imports": [
+        "lxml"
+      ]
+    },
+    {
+      "name": "pillow",
+      "version": "10.4.0",
+      "filename": "pillow-10.4.0-cp38-cp38-win_amd64.whl",
+      "url": "https://files.pythonhosted.org/packages/f2/75/3cb820b2812405fc7feb3d0deb701ef0c3de93dc02597115e00704591bc9/pillow-10.4.0-cp38-cp38-win_amd64.whl",
+      "sha256": "5161eef006d335e46895297f642341111945e2c1c899eb406882a6c61a4357ab",
+      "size": 2554594,
+      "requiresPython": ">=3.8",
+      "requiresDist": [
+        "furo; extra == \"docs\"",
+        "olefile; extra == \"docs\"",
+        "sphinx>=7.3; extra == \"docs\"",
+        "sphinx-copybutton; extra == \"docs\"",
+        "sphinx-inline-tabs; extra == \"docs\"",
+        "sphinxext-opengraph; extra == \"docs\"",
+        "olefile; extra == \"fpx\"",
+        "olefile; extra == \"mic\"",
+        "check-manifest; extra == \"tests\"",
+        "coverage; extra == \"tests\"",
+        "defusedxml; extra == \"tests\"",
+        "markdown2; extra == \"tests\"",
+        "olefile; extra == \"tests\"",
+        "packaging; extra == \"tests\"",
+        "pyroma; extra == \"tests\"",
+        "pytest; extra == \"tests\"",
+        "pytest-cov; extra == \"tests\"",
+        "pytest-timeout; extra == \"tests\"",
+        "typing-extensions; python_version < \"3.10\" and extra == \"typing\"",
+        "defusedxml; extra == \"xmp\""
+      ],
+      "license": "HPND",
+      "imports": [
+        "PIL"
+      ]
+    },
+    {
+      "name": "xlsxwriter",
+      "version": "3.2.5",
+      "filename": "xlsxwriter-3.2.5-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/fa/34/a22e6664211f0c8879521328000bdcae9bf6dbafa94a923e531f6d5b3f73/xlsxwriter-3.2.5-py3-none-any.whl",
+      "sha256": "4f4824234e1eaf9d95df9a8fe974585ff91d0f5e3d3f12ace5b71e443c1c6abd",
+      "size": 172347,
+      "requiresPython": ">=3.8",
+      "requiresDist": [],
+      "license": "BSD-2-Clause",
+      "imports": [
+        "xlsxwriter"
+      ]
+    },
+    {
+      "name": "openpyxl",
+      "version": "3.1.5",
+      "filename": "openpyxl-3.1.5-py2.py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/c0/da/977ded879c29cbd04de313843e76868e6e13408a94ed6b987245dc7c8506/openpyxl-3.1.5-py2.py3-none-any.whl",
+      "sha256": "5282c12b107bffeef825f4617dc029afaf41d0ea60823bbb665ef3079dc79de2",
+      "size": 250910,
+      "requiresPython": ">=3.8",
+      "requiresDist": [
+        "et-xmlfile"
+      ],
+      "license": "MIT",
+      "imports": [
+        "openpyxl"
+      ]
+    },
+    {
+      "name": "et-xmlfile",
+      "version": "2.0.0",
+      "filename": "et_xmlfile-2.0.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/c1/8b/5fe2cc11fee489817272089c4203e679c63b570a5aaeb18d852ae3cbba6a/et_xmlfile-2.0.0-py3-none-any.whl",
+      "sha256": "7a91720bc756843502c3b7504c77b8fe44217c85c537d85037f0f536151b2caa",
+      "size": 18059,
+      "requiresPython": ">=3.8",
+      "requiresDist": [],
+      "license": "MIT",
+      "imports": [
+        "et_xmlfile"
+      ]
+    },
+    {
+      "name": "typing-extensions",
+      "version": "4.13.2",
+      "filename": "typing_extensions-4.13.2-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/8b/54/b1ae86c0973cc6f0210b53d508ca3641fb6d0c56823f288d108bc7ab3cc8/typing_extensions-4.13.2-py3-none-any.whl",
+      "sha256": "a439e7c04b49fec3e5d3e2beaa21755cadbbdc391694e28ccdd36ca4a1408f8c",
+      "size": 45806,
+      "requiresPython": ">=3.8",
+      "requiresDist": [],
+      "license": "PSF-2.0",
+      "imports": [
+        "typing_extensions"
+      ]
+    },
+    {
+      "name": "defusedxml",
+      "version": "0.7.1",
+      "filename": "defusedxml-0.7.1-py2.py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/07/6c/aa3f2f849e01cb6a001cd8554a88d4c77c5c1a31c95bdf1cf9301e6d9ef4/defusedxml-0.7.1-py2.py3-none-any.whl",
+      "sha256": "a352e7e428770286cc899e2542b6cdaedb2b4953ff269a210103ec58f6198a61",
+      "size": 25604,
+      "requiresPython": ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*",
+      "requiresDist": [],
+      "license": "PSFL",
+      "imports": [
+        "defusedxml"
+      ]
+    }
+  ]
+}

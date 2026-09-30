@@ -1,6 +1,6 @@
 # 便携 Python 与内置 portable-python Skill 设计
 
-状态：**设计已完成，实现和 Win7 验收待进行**。作为当前版本发布后的下一阶段设计，本文没有给当前程序加入 Python，也没有将下列依赖打包或发布。核查日期：2026-09-30。
+状态：**0.7.0 已按本设计实现，Win7 实机验收待进行**。本文保留原方案的来源核查与候选矩阵；当前构建脚本、精确锁文件和实际 Skill 分别位于 scripts/fetch-python.js、scripts/python-runtime-lock.json 和 builtin-skills/portable-python。0.7.0 以含自检脚本的 x64 预发布验收包交付，不宣称原生包已通过 Win7 实测。核查日期：2026-09-30。
 
 ## 1. 建议与已验证范围
 
@@ -8,11 +8,11 @@
 
 3.8.10 是 3.8 最后一个常规维护版本，并提供官方 Windows 嵌入包；后续 3.8 安全版本只发布源码。Python 3.8 已于 2024-10-07 结束支持。因此，“官方历史兼容基线”不表示“仍获安全维护”。[Python 3.8.10 官方发布页](https://www.python.org/downloads/release/python-3810/)、[Python 官方 Windows 使用说明](https://docs.python.org/3/using/windows.html)。
 
-本轮完成了以下**资料核查**：
+设计阶段完成了以下**资料核查**（实现和测试结果另见根目录 VALIDATION.md）：
 
 - 实时读取 PyPI JSON，检查候选包的 `Requires-Python`、非 extra 依赖、指定 wheel 文件名、大小、SHA256、`yanked=false`。
 - 阅读 CPython 固定版本源码文档、Microsoft 部署文档、NumPy 官方问题讨论和 Pillow 官方平台表。
-- 仅联网读取文本及 JSON；没有下载或执行解释器、wheel、安装器，也没有在 Win7 上运行导入测试。
+- 设计阶段仅联网读取文本及 JSON。后续 0.7.0 构建已加入下载字节校验、隔离离线安装、运行时探测和工具集成；尚未在 Win7 上运行导入测试。
 
 因此，目前确认的是**候选依赖闭包有 Python 3.8 / Windows x64 可用的分发文件**。所有包含原生代码的包还必须通过第 8 节验收，才能成为本产品的 Win7 发布基线。`cp38-cp38-win_amd64` 描述解释器、ABI 和平台，文件名没有表达 Windows 的最低系统版本。[PyPA wheel 平台标签规范](https://packaging.python.org/en/latest/specifications/platform-compatibility-tags/)。
 
@@ -85,7 +85,7 @@ NumPy 证据应一并阅读：[1.24 发布文档](https://numpy.org/doc/1.24/dev
 
 ### 核对过的精确 wheel 与 SHA256
 
-以下散列直接来自上述 PyPI JSON；本轮未下载文件重新计算。实际构建必须校验下载字节，不只核对文件名。`charset-normalizer` 只能使用这里列出的纯 Python 文件。
+以下散列直接来自上述 PyPI JSON；0.7.0 构建脚本按精确锁文件校验下载字节，不只核对文件名。`charset-normalizer` 只能使用这里列出的纯 Python 文件。
 
 ```text
 requests-2.32.4-py3-none-any.whl 27babd3cda2a6d50b30443204ee89830707d396671944c998b5975b031ac2b2c
@@ -122,7 +122,7 @@ defusedxml-0.7.1-py2.py3-none-any.whl a352e7e428770286cc899e2542b6cdaedb2b4953ff
 
 ## 5. 离线构建与便携目录
 
-提议的最终目录：
+0.7.0 随包目录（另含 runtime-probe.py、developer-probe.json 和 pe-imports.json）：
 
 ```text
 runtime/python38-x64/
@@ -210,4 +210,4 @@ Skill 可以附带经过复核的中文表格、Word、PowerPoint 示例和结�
 
 需要保留 CPython LICENSE、各 wheel 的 `.dist-info` / licenses、NumPy 所带 OpenBLAS 等组件声明、Pillow 的图像编解码组件声明、lxml 的 libxml2/libxslt 相关声明、certifi 的证书和许可文件。MSVC/UCRT 的分发遵循相应微软条款。构建生成完整 `THIRD_PARTY_NOTICES.txt` 与包含名称、版本、来源、SHA256、文件大小、许可证、Win7 验收状态的 `runtime-manifest.json`。
 
-下一阶段的第一个交付应是**含自检脚本的 x64 便携 Python 验收包**。本设计已经完成；实现与 Win7 实机验收尚未进行，当前应用发布物不宣称包含或已经支持这一运行时。
+第一个交付为 **0.7.0 含自检脚本的 x64 便携 Python 预发布验收包**。下一步在用户 Win7 SP1 机器运行设置页环境检查和 Skill 离线文档自检，依据实际 DLL/CPU/系统补丁错误决定是否需要候选 B；没有实测依据时不静默更换依赖矩阵。

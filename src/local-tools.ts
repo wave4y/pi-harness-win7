@@ -1,12 +1,12 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
-import { spawn } from 'child_process';
-import { StringDecoder } from 'string_decoder';
+import { executeProcess, CancellationSignal } from './process-runner';
+import { preparePythonRun, runPython } from './python-runtime';
+export { CancellationSignal } from './process-runner';
 
 // Keep this module compatible with Node 12 (the last official Win7 Node line).
 const MAX_FILE_BYTES = 1024 * 1024;
-const MAX_OUTPUT_BYTES = 64 * 1024;
 const MAX_SCAN_FILES = 3000;
 const MAX_SCAN_BYTES = 16 * 1024 * 1024;
 const SKIP_DIRECTORIES = new Set(['.git', 'node_modules', '.npm-cache', '.state', '.runtime', 'release', 'dist']);
@@ -15,13 +15,7 @@ const SHELL_NAMES = new Set(['cmd', 'command', 'powershell', 'pwsh', 'wscript', 
 // permitted directory, unlike the JavaScript fallback in older Node releases.
 const realpath = fs.realpathSync.native || fs.realpathSync;
 
-export interface CancellationSignal {
-  readonly aborted: boolean;
-  addEventListener(type: 'abort', listener: () => void, options?: any): void;
-  removeEventListener(type: 'abort', listener: () => void): void;
-}
-
-export interface LocalToolOptions { allowedExecutables?: string[]; allowOutsideWorkspace?: boolean; allowAnyExecutable?: boolean; }
+export interface LocalToolOptions { allowedExecutables?: string[]; allowOutsideWorkspace?: boolean; allowAnyExecutable?: boolean; pythonRuntimeDir?: string; }
 
 function assertNotAborted(signal?: CancellationSignal): void {
   if (signal && signal.aborted) throw new Error('Operation cancelled.');
@@ -280,78 +274,8 @@ async function runProcess(workspace: string, options: LocalToolOptions, args: an
   const cwd = existingPath(root, args.cwd || '.', options.allowOutsideWorkspace);
   if (!fs.statSync(cwd).isDirectory()) throw new Error('Working directory is not a directory.');
   const timeoutMs = integer(args.timeoutMs, 30000, 100, 120000);
-  const childEnvironment = { ...process.env };
-  for (const key of Object.keys(childEnvironment)) {
-    if (key.toUpperCase() === 'PI_API_KEY') delete childEnvironment[key];
-  }
-  return new Promise<any>((resolve, reject) => {
-    const child = spawn(executable, argv, { cwd, env: childEnvironment, shell: false, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
-    let stdout = '', stderr = '', received = 0, timedOut = false, cancelled = false, truncated = false, done = false, terminationRequested = false;
-    const decoders = { stdout: new StringDecoder('utf8'), stderr: new StringDecoder('utf8') };
-    let forceTimer: any;
-    const cancellationNote = 'Cancellation terminates only the direct child; descendant processes are not guaranteed to stop. The executable allowlist is not a filesystem sandbox.';
-    const cleanup = () => {
-      clearTimeout(timer);
-      if (forceTimer) clearTimeout(forceTimer);
-      if (signal) signal.removeEventListener('abort', abort);
-    };
-    const finish = (exitCode: number | null, exitSignal: string | null, childExited: boolean) => {
-      if (done) return;
-      done = true;
-      cleanup();
-      stdout += decoders.stdout.end();
-      stderr += decoders.stderr.end();
-      resolve({ executable, args: argv, cwd: relativePath(root, cwd), stdout, stderr, exitCode, signal: exitSignal, timedOut, cancelled, truncated, terminationRequested, childExited, cancellationNote });
-    };
-    const stop = () => {
-      if (terminationRequested || done) return;
-      terminationRequested = true;
-      try { child.kill('SIGKILL'); } catch (_) { /* Report whether exit was observed below. */ }
-      // Descendants can retain inherited pipes after the direct child exits.
-      forceTimer = setTimeout(() => {
-        if (child.stdout) child.stdout.destroy();
-        if (child.stderr) child.stderr.destroy();
-        finish(child.exitCode, child.signalCode, child.exitCode !== null || child.signalCode !== null);
-      }, 1000);
-    };
-    const abort = () => { cancelled = true; stop(); };
-    const timer = setTimeout(() => { timedOut = true; stop(); }, timeoutMs);
-    const collect = (stream: 'stdout' | 'stderr', chunk: Buffer) => {
-      if (done) return;
-      const remaining = MAX_OUTPUT_BYTES - received;
-      const kept = chunk.slice(0, Math.max(0, remaining));
-      received += kept.length;
-      const text = decoders[stream].write(kept);
-      if (stream === 'stdout') stdout += text; else stderr += text;
-      if (text && onUpdate) {
-        try { onUpdate({ content: [{ type: 'text', text }], details: { stream } }); }
-        catch (error) {
-          // An observer failure must not throw from an EventEmitter and crash the server.
-          stop();
-          done = true;
-          cleanup();
-          if (child.stdout) child.stdout.destroy();
-          if (child.stderr) child.stderr.destroy();
-          reject(error);
-          return;
-        }
-      }
-      if (chunk.length > remaining) { truncated = true; stop(); }
-    };
-    child.stdout!.on('data', (chunk: Buffer) => collect('stdout', chunk));
-    child.stderr!.on('data', (chunk: Buffer) => collect('stderr', chunk));
-    child.on('error', error => {
-      if (done) return;
-      done = true;
-      cleanup();
-      reject(error);
-    });
-    child.on('close', (code, exitSignal) => finish(code, exitSignal, true));
-    if (signal) {
-      signal.addEventListener('abort', abort, { once: true });
-      if (signal.aborted) abort();
-    }
-  });
+  const output = await executeProcess(executable, argv, cwd, timeoutMs, signal, onUpdate);
+  return { ...output, cwd: relativePath(root, cwd) };
 }
 
 function schema(properties: any, required: string[]) {
@@ -360,6 +284,10 @@ function schema(properties: any, required: string[]) {
 
 function result(details: any) {
   return { content: [{ type: 'text' as const, text: JSON.stringify(details, null, 2) }], details };
+}
+
+function processResult(details: any) {
+  return { ...result(details), isError: details.exitCode !== 0 || details.timedOut || details.cancelled || details.truncated || !details.childExited };
 }
 
 export function createLocalTools(workspace: string, options: LocalToolOptions = {}) {
@@ -424,7 +352,13 @@ export function createLocalTools(workspace: string, options: LocalToolOptions = 
     {
       name: 'run_process', label: 'Run program', description: 'Run an executable directly, without any shell, subject to the current permission mode or explicit approval. Windows requires .exe. Arguments are literal; no pipes, redirection, .cmd or .bat. Output is UTF-8, capped at 64 KiB. Cancellation only stops the direct child. This tool is not a filesystem sandbox.',
       parameters: schema({ executable: string, args: { type: 'array', items: string }, cwd: string, timeoutMs: { type: 'integer', minimum: 100, maximum: 120000 } }, ['executable']),
-      async execute(_id: string, args: any, signal?: CancellationSignal, onUpdate?: (value: any) => void) { return result(await runProcess(root, options, args, signal, onUpdate)); }
-    }
+      async execute(_id: string, args: any, signal?: CancellationSignal, onUpdate?: (value: any) => void) { return processResult(await runProcess(root, options, args, signal, onUpdate)); }
+    },
+    ...(!options.pythonRuntimeDir ? [] : [{
+      name: 'run_python', label: 'Run portable Python', description: 'Run a Python script with the bundled isolated Python 3.8 interpreter. script and cwd resolve from the workspace; args are literal. No shell, arbitrary interpreter, inline code or environment overrides. Output is UTF-8, capped at 64 KiB. Every call requires approval outside full access. This is not a filesystem or network sandbox; cancellation only stops the direct child.',
+      parameters: schema({ script: string, args: { type: 'array', items: string, maxItems: 250 }, cwd: string, timeoutMs: { type: 'integer', minimum: 100, maximum: 120000 } }, ['script']),
+      describeCall(args: any) { return preparePythonRun(options.pythonRuntimeDir!, root, args, { allowOutsideWorkspace: true }); },
+      async execute(_id: string, args: any, signal?: CancellationSignal, onUpdate?: (value: any) => void) { return processResult(await runPython(options.pythonRuntimeDir!, root, args, { allowOutsideWorkspace: options.allowOutsideWorkspace }, signal, onUpdate)); }
+    }])
   ];
 }

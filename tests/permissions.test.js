@@ -38,13 +38,16 @@ function policy() {
       assert(reason(mode, name, path.join(outside, 'new.txt')));
     }
     assert(reason(mode, 'run_process', '.', { allowedExecutables: [process.execPath] }));
+    for (const script of ['inside.py', path.join(outside, 'external.py')]) {
+      assert(approvalReason(mode, workspace, { name: 'run_python' }, { script, args: [], cwd: '.' }).includes('Python'));
+    }
     assert(reason(mode, 'unknown_future_tool', '.'));
     assert.strictEqual(reason(mode, 'read_skill', '../configured-shared-skill'), null);
     for (const name of ['mcp_read', 'read_file', 'read_skill']) {
       assert(reason(mode, name, '.', { mcpServerId: 'server', readOnlyHint: true, annotations: { readOnlyHint: true, destructiveHint: false } }));
     }
   }
-  for (const name of ['read_file', 'write_file', 'create_directory', 'run_process', 'unknown_future_tool', 'read_skill']) {
+  for (const name of ['read_file', 'write_file', 'create_directory', 'run_process', 'run_python', 'unknown_future_tool', 'read_skill']) {
     assert.strictEqual(reason('danger-full-access', name, path.join(outside, 'outside.txt')), null);
     assert.strictEqual(reason('danger-full-access', name, '.', { mcpServerId: 'server' }), null);
   }

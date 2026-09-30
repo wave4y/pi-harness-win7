@@ -151,8 +151,20 @@
   <dialog id="settings-dialog" class="settings-dialog dsh-modal-dialog">
     <form id="settings-form">
       <div class="dsh-modal-header"><h2 class="dsh-modal-title">设置</h2><button id="close-settings" type="button" class="dsh-modal-close" aria-label="关闭设置"><svg class="icon"><use href="#i-close"/></svg></button></div>
-      <div class="settings-tabs" role="tablist" aria-label="设置分类"><button id="settings-tab-model" type="button" class="settings-tab active" role="tab" aria-selected="true" aria-controls="settings-model-panel">模型与上下文</button><button id="settings-tab-mcp" type="button" class="settings-tab" role="tab" aria-selected="false" aria-controls="settings-mcp-panel">MCP</button><button id="settings-tab-skills" type="button" class="settings-tab" role="tab" aria-selected="false" aria-controls="settings-skills-panel">Skills</button><button id="settings-tab-resources" type="button" class="settings-tab" role="tab" aria-selected="false" aria-controls="settings-resources-panel">提示词与资源</button><button id="settings-tab-storage" type="button" class="settings-tab" role="tab" aria-selected="false" aria-controls="settings-storage-panel">本机数据</button></div>
+      <div class="settings-tabs" role="tablist" aria-label="设置分类"><button id="settings-tab-model" type="button" class="settings-tab active" role="tab" aria-selected="true" aria-controls="settings-model-panel">模型与上下文</button><button id="settings-tab-mcp" type="button" class="settings-tab" role="tab" aria-selected="false" aria-controls="settings-mcp-panel">MCP</button><button id="settings-tab-skills" type="button" class="settings-tab" role="tab" aria-selected="false" aria-controls="settings-skills-panel">Skills</button><button id="settings-tab-resources" type="button" class="settings-tab" role="tab" aria-selected="false" aria-controls="settings-resources-panel">提示词与资源</button><button id="settings-tab-python" type="button" class="settings-tab" role="tab" aria-selected="false" aria-controls="settings-python-panel">Python</button><button id="settings-tab-storage" type="button" class="settings-tab" role="tab" aria-selected="false" aria-controls="settings-storage-panel">本机数据</button></div>
       <div class="settings-body">
+      <section id="settings-python-panel" role="tabpanel" aria-labelledby="settings-tab-python" hidden>
+        <div class="settings-section-heading"><span>便携 Python</span><span id="python-status" class="python-status" role="status">正在读取…</span></div>
+        <p class="field-help">处理表格、Word、PowerPoint、图片与 HTTP 数据。使用随包解释器，无需安装 Python。</p>
+        <p id="python-summary" class="field-help"></p><p id="python-error" class="inline-error" role="alert" hidden></p>
+        <div id="python-runtime-path" class="storage-path"></div>
+        <div class="python-actions"><button id="probe-python" type="button" class="dsh-button-button dsh-button-md dsh-button-outline">检查运行环境</button><button id="python-example" type="button" class="dsh-button-button dsh-button-md dsh-button-ghost">试用文档与图片工具</button></div>
+        <p id="python-check-time" class="field-help"></p>
+        <p class="field-help">环境检查仅验证解释器与依赖能否加载。文档示例会放入输入框，由你发送后执行。</p>
+        <details class="resource-settings"><summary>预装依赖 <span id="python-package-count"></span></summary><div id="python-packages" class="python-packages"></div></details>
+        <details id="python-report-details" class="resource-settings" hidden><summary>自检详情</summary><pre id="python-report" class="builtin-prompt-text"></pre></details>
+        <p id="python-win7-note" class="field-help">本版仍需 Windows 7 SP1 实机验证。若有 DLL 或加载错误，请保留完整错误信息。</p>
+      </section>
       <section id="settings-model-panel" role="tabpanel" aria-labelledby="settings-tab-model">
         <label class="field-label" for="settings-workspace">工作文件夹</label><div class="field-with-button"><input id="settings-workspace" name="workspace" placeholder="D:\projects\my-project" required autocomplete="off"><button id="browse-workspace" type="button" class="dsh-button-button dsh-button-md dsh-button-outline"><svg class="icon"><use href="#i-folder"/></svg>浏览</button></div>
         <label class="field-label" for="settings-base-url">模型服务地址 <span>OpenAI 兼容 API</span></label><input id="settings-base-url" name="baseUrl" type="url" placeholder="https://api.openai.com/v1" required autocomplete="off">

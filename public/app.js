@@ -1066,7 +1066,7 @@
 
   function selectSettingsTab(name) {
     state.settingsTab = name;
-    ['model', 'mcp', 'skills', 'resources', 'storage'].forEach(function (item) {
+    ['model', 'mcp', 'skills', 'resources', 'python', 'storage'].forEach(function (item) {
       const active = item === name;
       byId('settings-' + item + '-panel').hidden = !active;
       byId('settings-tab-' + item).classList.toggle('active', active);
@@ -1076,6 +1076,41 @@
     if ((name === 'mcp' || name === 'skills') && !state.extensions) loadExtensions();
     if (name === 'resources' && !state.piResources) loadPiResources();
     if (name === 'storage') loadStorage();
+    if (name === 'python') loadPythonRuntime(false);
+  }
+  function renderPythonRuntime(data) {
+    const labels = {missing: '未随包安装', invalid: '文件校验失败', 'not-tested': '尚未自检', ready: '自检通过', error: '自检失败'};
+    byId('python-status').textContent = labels[data.state] || '状态未知';
+    byId('python-status').classList.toggle('python-ready', data.ready === true);
+    byId('python-summary').textContent = data.version ? 'Python ' + data.version + ' · ' + (data.architecture || 'x64') + ' · run_python' : '下载包含 Python 的完整便携包后即可使用。';
+    byId('python-runtime-path').textContent = data.executable || data.runtimeDir || '';
+    const failures = data.probe && Array.isArray(data.probe.modules) ? data.probe.modules.filter(function (item) { return !item.ok; }).map(function (item) { return item.distribution + ': ' + (item.error || '导入失败'); }) : [];
+    byId('python-report-details').hidden = !data.probe && !data.diagnostics;
+    byId('python-report').textContent = JSON.stringify({probe: data.probe, diagnostics: data.diagnostics}, null, 2);
+    byId('python-error').textContent = [data.reason || ''].concat(failures).filter(Boolean).join('\n');
+    byId('python-error').hidden = !data.reason;
+    byId('python-check-time').textContent = data.checkedAt ? '最近检查：' + new Date(data.checkedAt).toLocaleString('zh-CN') : '首次执行 Python 工具时也会自动检查。';
+    byId('python-example').disabled = !data.available;
+    const packages = data.packages || [];
+    byId('python-package-count').textContent = packages.length ? '（' + packages.length + '）' : '';
+    const list = byId('python-packages'); list.replaceChildren();
+    packages.forEach(function (item) {
+      const row = make('div', 'python-package');
+      row.appendChild(make('span', '', item.name));
+      row.appendChild(make('code', '', item.version));
+      list.appendChild(row);
+    });
+    byId('python-win7-note').textContent = data.win7Validated ? '运行时清单已记录 Windows 7 验证结果。' : '本版仍需 Windows 7 SP1 实机验证。若有 DLL 或加载错误，请保留完整错误信息。';
+  }
+  async function loadPythonRuntime(probe) {
+    if (state.pythonLoading) return;
+    state.pythonLoading = true;
+    byId('probe-python').disabled = true;
+    byId('python-error').hidden = true;
+    byId('python-status').textContent = probe ? '正在检查…' : '正在读取…';
+    try { renderPythonRuntime(await json(probe ? '/api/python/probe' : '/api/python', probe ? {method: 'POST', body: {}} : undefined)); }
+    catch (error) { byId('python-status').textContent = '检查失败'; showExtensionError('python', error); }
+    finally { state.pythonLoading = false; byId('probe-python').disabled = false; }
   }
   function showExtensionError(surface, error) {
     const target = byId(surface + '-error');
@@ -1132,7 +1167,7 @@
     list.replaceChildren();
     (data.skills || []).forEach(function (skill) {
       const card = make('div', 'extension-card');
-      card.appendChild(make('strong', '', skill.name || skill.id));
+      card.appendChild(make('strong', '', (skill.name || skill.id) + (skill.source === 'builtin' ? ' · 内置' : '')));
       if (skill.description) card.appendChild(make('p', 'field-help', skill.description));
       if (skill.path) card.appendChild(make('div', 'skill-path', skill.path));
       list.appendChild(card);
@@ -1607,15 +1642,21 @@
     byId('full-access-dialog').close();
     selectPermission('danger-full-access');
   });
-  ['model', 'mcp', 'skills', 'resources', 'storage'].forEach(function (name) {
+  ['model', 'mcp', 'skills', 'resources', 'python', 'storage'].forEach(function (name) {
     byId('settings-tab-' + name).addEventListener('click', function () { selectSettingsTab(name); });
     byId('settings-tab-' + name).addEventListener('keydown', function (event) {
       if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
       event.preventDefault();
-      const names = ['model', 'mcp', 'skills', 'resources', 'storage'];
+      const names = ['model', 'mcp', 'skills', 'resources', 'python', 'storage'];
       const next = names[(names.indexOf(name) + (event.key === 'ArrowRight' ? 1 : names.length - 1)) % names.length];
       selectSettingsTab(next); byId('settings-tab-' + next).focus();
     });
+  });
+  byId('probe-python').addEventListener('click', function () { loadPythonRuntime(true); });
+  byId('python-example').addEventListener('click', function () {
+    if (ui.input.value.trim()) { toast('请先发送或清空输入框中的草稿'); return; }
+    ui.input.value = '使用内置 portable-python Skill，在当前工作目录中新建输出文件夹，运行离线自检，生成并重新打开 CSV、Excel、Word、PowerPoint 和图片，报告结果与文件路径。';
+    ui.settings.close(); ui.input.dispatchEvent(new Event('input')); ui.input.focus();
   });
   byId('refresh-resources').addEventListener('click', loadPiResources);
   byId('save-resources').addEventListener('click', savePiResources);

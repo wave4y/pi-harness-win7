@@ -109,14 +109,23 @@ async function main() {
   assert.deepStrictEqual(JSON.parse(output.stdout), literalArgs);
   assert.strictEqual(output.exitCode, 0);
   assert.strictEqual(output.childExited, true);
-  const previousKey = process.env.PI_API_KEY;
-  process.env.PI_API_KEY = 'parent-only-test-key';
+  const failedProcess = await run({ executable: process.execPath, args: ['-e', 'process.stderr.write("failure detail");process.exitCode=3'] });
+  assert.strictEqual(failedProcess.isError, true);
+  assert.strictEqual(failedProcess.details.exitCode, 3);
+  assert.strictEqual(failedProcess.details.stderr, 'failure detail');
+  assert.strictEqual((await run({ executable: process.execPath, args: ['-e', 'process.exitCode=0'] })).isError, false);
+  const sensitiveKeys = ['PI_API_KEY', 'OPENAI_API_KEY', 'DEEPSEEK_API_KEY', 'test_access_token', 'test_PaSsWoRd', 'TEST_SECRET', 'TEST_CREDENTIAL', 'TEST_COOKIE', 'TEST_AUTH_HEADER', 'PYTHONPATH', 'PYTHONHOME', 'PYTHONSTARTUP', 'PYTHONINSPECT', 'NODE_OPTIONS', 'NODE_PATH', 'LD_PRELOAD', 'DYLD_INSERT_LIBRARIES', 'VIRTUAL_ENV'];
+  const previousEnvironment = {};
+  for (const key of sensitiveKeys.concat(['PORTABLE_TEST_MARKER'])) { previousEnvironment[key] = process.env[key]; process.env[key] = 'parent-only-test-value'; }
   try {
-    const environment = (await run({ executable: process.execPath, args: ['-e', "process.stdout.write(String(Object.keys(process.env).some(key=>key.toUpperCase()==='PI_API_KEY')))"] })).details;
-    assert.strictEqual(environment.stdout, 'false');
+    const inspect = 'const names=' + JSON.stringify(sensitiveKeys) + ';process.stdout.write(JSON.stringify({present:names.filter(key=>Object.keys(process.env).some(name=>name.toUpperCase()===key.toUpperCase())),marker:process.env.PORTABLE_TEST_MARKER,path:!!process.env.PATH||!!process.env.Path}))';
+    const environment = (await run({ executable: process.execPath, args: ['-e', inspect] })).details;
+    assert.strictEqual(environment.exitCode, 0);
+    assert.deepStrictEqual(JSON.parse(environment.stdout), { present: [], marker: 'parent-only-test-value', path: true });
   } finally {
-    if (previousKey === undefined) delete process.env.PI_API_KEY;
-    else process.env.PI_API_KEY = previousKey;
+    for (const key of Object.keys(previousEnvironment)) {
+      if (previousEnvironment[key] === undefined) delete process.env[key]; else process.env[key] = previousEnvironment[key];
+    }
   }
   await assert.rejects(run({ executable: process.execPath, args: ['-v'], cwd: '..' }), /outside/);
   await assert.rejects(run({ executable: 'node', args: ['-v'] }), /absolute/);
