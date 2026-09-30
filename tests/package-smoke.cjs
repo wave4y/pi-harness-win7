@@ -5,6 +5,7 @@ assert.strictEqual(JSON.parse(fs.readFileSync(path.join(packageRoot,'dist/build-
 for(const name of ['.state','node_modules','.npm-cache'])assert(!fs.existsSync(path.join(packageRoot,name)),'Private/development content in archive: '+name);
 const notices=fs.readFileSync(path.join(packageRoot,'dist/THIRD_PARTY_NOTICES.txt'),'utf8');assert(notices.includes('Pi coding-agent'));assert(notices.includes('DeepSeek'));assert(notices.includes('MIT License'));
 assert(fs.existsSync(path.join(packageRoot,'dist/public/session-groups.js')));
+assert(fs.existsSync(path.join(packageRoot,'dist/public/session-stats.css')));
 assert(fs.readFileSync(path.join(packageRoot,'dist/public/index.html'),'utf8').includes('session-groups.js'));
 let port=0,token='',output='';
 const privateState=fs.mkdtempSync(path.join(path.resolve(__dirname,'../.test-tmp'),'package-state-'));
@@ -13,6 +14,7 @@ function request(method,url,body){return new Promise((ok,no)=>{const data=body==
 (async()=>{
  await new Promise((ok,no)=>{const t=setTimeout(()=>no(Error('Package startup failed: '+output)),10000);server.on('error',no);server.stdout.on('data',c=>{output+=c;const m=/http:\/\/127\.0\.0\.1:(\d+)/.exec(output);if(m){port=Number(m[1]);clearTimeout(t);ok();}});server.stderr.on('data',c=>output+=c);});
  const boot=(await request('GET','/api/bootstrap')).json;token=boot.csrfToken;assert.strictEqual(boot.permissionMode,'workspace-write');assert(boot.compaction.enabled);
+ const stats=await request('GET','/api/session/stats');assert.strictEqual(stats.status,200);assert.strictEqual(stats.json.steps,0);
  const extensions=(await request('GET','/api/extensions')).json;assert(extensions.skills.some(s=>s.name==='win7-smoke-test'));
  const example=extensions.exampleMcpConfig;assert(example.mcpServers.demo.command.startsWith(packageRoot));assert(example.mcpServers.demo.args[0].startsWith(packageRoot));
  assert.strictEqual((await request('POST','/api/extensions',{mcpServers:example})).status,200);

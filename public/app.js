@@ -29,6 +29,161 @@
   state.groupExpansion = loadGroupExpansion();
   state.searchGroupExpansion = Object.create(null);
   state.sessionSearch = '';
+  state.sessionStats = null;
+  state.statsRequest = 0;
+  state.statsTimer = null;
+  state.statsPanel = null;
+  state.statsError = false;
+
+  function statNumber(value) { return typeof value === 'number' && Number.isFinite(value) && value >= 0; }
+  function statDuration(value) {
+    if (!statNumber(value)) return '—';
+    const seconds = value / 1000;
+    if (seconds < 60) return (Math.round(seconds * 10) / 10) + '秒';
+    const whole = Math.round(seconds);
+    return Math.floor(whole / 60) + '分' + (whole % 60) + '秒';
+  }
+  function statTokens(value, exact) {
+    if (!statNumber(value)) return '—';
+    if (exact) return value.toLocaleString('zh-CN') + ' tok';
+    const scaled = function (number) { return String(number >= 100 ? Math.round(number) : Math.round(number * 10) / 10); };
+    return (value < 1000 ? String(value) : value < 1000000 ? scaled(value / 1000) + 'K' : scaled(value / 1000000) + 'M') + ' tok';
+  }
+  function statSpeed(value) { return statNumber(value) ? (Math.round(value * 10) / 10) + ' tok/s' : '—'; }
+  function statCache(rate) {
+    if (!statNumber(rate) || rate > 1) return null;
+    if (rate === 1) return '100';
+    const percent = rate * 100;
+    if (Math.round(percent) < 100) return String(Math.round(percent));
+    // A partial cache hit must never round up to a claim of complete reuse.
+    for (let places = 1; places <= 12; places++) {
+      const text = percent.toFixed(places);
+      if (Number(text) < 100) return text.replace(/0+$/, '').replace(/\.$/, '');
+    }
+    return '<100';
+  }
+  function statPillLabel(id, pieces) {
+    const label = byId(id); label.replaceChildren();
+    pieces.forEach(function (piece, index) {
+      if (index) { const separator = make('span', 'dsh-stat-separator', '·'); separator.setAttribute('aria-hidden', 'true'); label.appendChild(separator); }
+      label.appendChild(document.createTextNode(piece));
+    });
+  }
+  function closeSessionStats(restoreFocus) {
+    const kind = state.statsPanel;
+    state.statsPanel = null;
+    byId('session-stats-panel').hidden = true;
+    ['time', 'usage'].forEach(function (name) { byId('session-stats-' + name).setAttribute('aria-expanded', 'false'); });
+    if (restoreFocus && kind && !byId('session-stats').hidden) byId('session-stats-' + kind).focus();
+  }
+  function positionSessionStats() {
+    if (!state.statsPanel) return;
+    const panel = byId('session-stats-panel');
+    const anchor = byId('session-stats-' + state.statsPanel).getBoundingClientRect();
+    const width = panel.offsetWidth, height = panel.offsetHeight;
+    panel.style.left = Math.max(12, Math.min(anchor.left, window.innerWidth - width - 12)) + 'px';
+    panel.style.top = Math.max(12, Math.min(anchor.top - height - 8, window.innerHeight - height - 12)) + 'px';
+    panel.style.visibility = 'visible';
+  }
+  function renderStatsPanel() {
+    const stats = state.sessionStats;
+    if (!state.statsPanel || !stats) return;
+    const usage = stats.usage || {};
+    const coverage = stats.coverage || {};
+    const reported = Number(usage.reportedSteps || 0), missing = Number(usage.missingSteps || 0);
+    const cached = Number(usage.cacheReportedSteps || 0);
+    const usageKnown = reported > 0 || (Number(stats.steps || 0) === 0 && missing === 0);
+    const cacheHit = cached > 0 ? statCache(usage.cacheHitRate) : null;
+    const rows = byId('session-stats-details'); rows.replaceChildren();
+    const notes = [];
+    function row(label, value) { rows.appendChild(make('dt', '', label)); rows.appendChild(make('dd', '', value)); }
+    const isTime = state.statsPanel === 'time';
+    byId('session-stats-title').textContent = isTime ? '会话统计' : 'Token 用量';
+    byId('session-stats-panel-icon').replaceChildren(icon(isTime ? 'stats-gauge' : 'stats-database'));
+    byId('session-stats-headline').textContent = isTime ? stats.turns + ' 轮 ' + stats.steps + ' 步' : statTokens(usageKnown ? usage.total : null, true);
+    if (isTime) {
+      row('模型用时', statDuration(stats.modelTimeMs));
+      row('工具调用用时', statDuration(stats.toolTimeMs));
+      row('首 token 平均（TTFT）', statDuration(stats.averageFirstTokenMs));
+      row('输出速度（TPS）', statSpeed(stats.tokensPerSecond));
+      if (Number(coverage.timedSteps || 0) < Number(stats.steps || 0)) notes.push('部分数据：' + Number(coverage.timedSteps || 0) + ' / ' + stats.steps + ' 个步骤有计时记录，旧历史的用时无法补算。');
+      if (Number(coverage.toolTimedCalls || 0) < Number(coverage.toolCalls || 0)) notes.push('工具计时覆盖 ' + Number(coverage.toolTimedCalls || 0) + ' / ' + Number(coverage.toolCalls || 0) + ' 次调用。');
+    } else {
+      row('缓存命中', cacheHit === null ? '—' : cacheHit + '%');
+      row(cached === reported && reported > 0 ? '未缓存输入' : cached === 0 ? '输入（未区分缓存）' : '输入（部分未区分缓存）', statTokens(usageKnown ? usage.input : null, true));
+      row('缓存读取', statTokens(cached > 0 ? usage.cacheRead : null, true));
+      if (cached === 0 || Number(usage.cacheWrite || 0) > 0) row('缓存写入', statTokens(cached > 0 ? usage.cacheWrite : null, true));
+      row('输出', statTokens(usageKnown ? usage.output : null, true));
+      if (missing > 0) notes.push(usageKnown ? '部分数据：累计值仅包含 ' + reported + ' 个已报告用量的步骤；另有 ' + missing + ' 个步骤未报告。' : '模型未报告这些步骤的 Token 用量，不能按 0 计算。');
+      if (cached === 0) notes.push('服务商未报告缓存明细，缓存用量与命中率未知。');
+      else if (cached < reported) notes.push('缓存明细仅覆盖 ' + cached + ' / ' + reported + ' 个已报告用量的步骤；命中率按这些步骤计算。');
+    }
+    const summary = stats.summary || {};
+    if (Number(summary.requests || 0) > 0) {
+      const summaryUsage = summary.usage || {};
+      row('摘要请求（另计）', summary.requests + ' 次 · ' + statTokens(Number(summaryUsage.reportedSteps || 0) > 0 ? summaryUsage.total : null, true));
+      notes.push('摘要请求的用量单独记录，未计入会话 Token 总量。' + (Number(summaryUsage.missingSteps || 0) > 0 ? '部分摘要请求未报告用量。' : ''));
+    }
+    if (state.statsError) notes.push('统计暂时无法刷新，当前显示上次收到的数据。');
+    byId('session-stats-notes').textContent = notes.join('\n');
+    byId('session-stats-notes').hidden = !notes.length;
+    positionSessionStats();
+  }
+  function renderSessionStats() {
+    const stats = state.sessionStats;
+    const visible = !!stats && (Number(stats.steps || 0) > 0 || Number((stats.summary || {}).requests || 0) > 0);
+    byId('session-stats').hidden = !visible;
+    byId('session-stats').parentElement.classList.toggle('has-session-stats', visible);
+    if (!visible) closeSessionStats(false);
+    else {
+      const timing = [stats.turns + ' 轮 ' + stats.steps + ' 步'];
+      if (statNumber(stats.tokensPerSecond)) timing.push(statSpeed(stats.tokensPerSecond));
+      statPillLabel('session-stats-time-label', timing);
+      byId('session-stats-time').setAttribute('aria-label', '会话统计：' + timing.join(' · '));
+      const usage = stats.usage || {};
+      const known = Number(usage.reportedSteps || 0) > 0 || (Number(stats.steps || 0) === 0 && Number(usage.missingSteps || 0) === 0);
+      const cacheHit = Number(usage.cacheReportedSteps || 0) > 0 ? statCache(usage.cacheHitRate) : null;
+      const tokens = [statTokens(known ? usage.total : null, false)];
+      if (cacheHit !== null) tokens.push('缓存命中 ' + cacheHit + '%');
+      if (known && Number(usage.missingSteps || 0) > 0) tokens.push('部分数据');
+      statPillLabel('session-stats-usage-label', tokens);
+      byId('session-stats-usage').setAttribute('aria-label', 'Token 用量：' + tokens.join(' · '));
+      renderStatsPanel();
+    }
+    scheduleStatsRefresh();
+  }
+  function acceptSessionStats(stats, invalidatePending) {
+    if (!stats || stats.sessionId !== (state.bootstrap || {}).sessionId) return;
+    if (invalidatePending) state.statsRequest++;
+    state.sessionStats = stats; state.statsError = false; renderSessionStats();
+  }
+  async function refreshSessionStats() {
+    const sessionId = (state.bootstrap || {}).sessionId;
+    if (!sessionId || !state.token) return;
+    const request = ++state.statsRequest;
+    try {
+      const stats = await json('/api/session/stats');
+      if (request !== state.statsRequest || sessionId !== (state.bootstrap || {}).sessionId || stats.sessionId !== sessionId) return;
+      acceptSessionStats(stats, false);
+    } catch (_) {
+      if (request !== state.statsRequest || sessionId !== (state.bootstrap || {}).sessionId) return;
+      state.statsError = true; renderStatsPanel();
+    }
+  }
+  function scheduleStatsRefresh() {
+    clearTimeout(state.statsTimer); state.statsTimer = null;
+    if (!state.busy || document.hidden || byId('session-stats').hidden) return;
+    state.statsTimer = setTimeout(async function () { state.statsTimer = null; await refreshSessionStats(); scheduleStatsRefresh(); }, 3000);
+  }
+  function openSessionStats(kind) {
+    if (!state.sessionStats || byId('session-stats').hidden) return;
+    if (state.statsPanel === kind) { closeSessionStats(true); return; }
+    state.statsPanel = kind;
+    ['time', 'usage'].forEach(function (name) { byId('session-stats-' + name).setAttribute('aria-expanded', String(name === kind)); });
+    const panel = byId('session-stats-panel'); panel.style.visibility = 'hidden'; panel.hidden = false;
+    renderStatsPanel(); panel.focus({preventScroll: true});
+    refreshSessionStats();
+  }
 
   function loadGroupExpansion() {
     try { return sessionGroups.parseExpansion(window.localStorage.getItem(groupStorageKey)); }
@@ -215,7 +370,12 @@
   }
 
   function updateBootstrap(data) {
+    const previousSession = (state.bootstrap || {}).sessionId;
     state.bootstrap = data;
+    if (previousSession !== data.sessionId) {
+      state.statsRequest++; state.sessionStats = null; state.statsError = false; closeSessionStats(false); renderSessionStats();
+    }
+    if (data.sessionStats) acceptSessionStats(data.sessionStats, true);
     if (data.csrfToken) state.token = data.csrfToken;
     byId('workspace-name').textContent = basename(data.workspace);
     byId('workspace-path').textContent = data.workspace || '请选择工作目录';
@@ -416,6 +576,8 @@
 
   async function loadSession() {
     const result = await json('/api/session');
+    if (result.sessionStats) acceptSessionStats(result.sessionStats, true);
+    else refreshSessionStats();
     resetMessages();
     (result.messages || []).forEach(function (message) {
       if (message.role !== 'user' && message.role !== 'assistant') return;
@@ -621,7 +783,8 @@
     } else if (event.type === 'approval_request') showApproval(event);
     else if (event.type === 'approval_resolved') approvalResolved(event.id, event.decision);
     else if (event.type === 'context') updateContext(event.stats);
-    else if (event.type === 'retry') byId('session-status').textContent = event.reason === 'context_overflow' ? '上下文超限，正在压缩后重试…' : '服务暂时不可用，等待第 ' + event.attempt + ' 次重试…';
+    else if (event.type === 'session_stats') acceptSessionStats(event.stats, true);
+    else if (event.type === 'retry') byId('session-status').textContent = event.reason === 'context_overflow' ? '上下文超限，正在压缩后重试…' : event.reason === 'stream_options_unsupported' ? '服务不支持流式用量，将继续请求' : '服务暂时不可用，等待第 ' + event.attempt + ' 次重试…';
     else if (event.type === 'compaction') {
       const message = event.message || (event.status === 'start' ? '正在压缩上下文…' : event.status === 'done' ? '上下文已压缩' : '上下文压缩未完成');
       byId('session-status').textContent = message;
@@ -689,6 +852,8 @@
   }
   function setBusy(busy) {
     state.busy = busy;
+    scheduleStatsRefresh();
+    if (!busy && state.ready) refreshSessionStats();
     ui.cancel.hidden = !busy;
     ui.cancel.disabled = false;
     byId('new-session').disabled = busy;
@@ -1385,6 +1550,19 @@
   byId('choose-missing-workspace').addEventListener('click', function () { openFolderPicker('workspace'); });
   byId('settings-base-url').addEventListener('input', updateKeyStatus);
   byId('settings-context-window').addEventListener('input', function () { byId('context-allocation-note').textContent = Number(this.value) === (state.bootstrap || {}).contextWindow ? '按已保存的上下文窗口计算' : '保存后按新窗口重新计算'; });
+  byId('session-stats-time').addEventListener('click', function () { openSessionStats('time'); });
+  byId('session-stats-usage').addEventListener('click', function () { openSessionStats('usage'); });
+  document.addEventListener('pointerdown', function (event) {
+    if (state.statsPanel && !byId('session-stats').contains(event.target) && !byId('session-stats-panel').contains(event.target)) closeSessionStats(false);
+  });
+  document.addEventListener('keydown', function (event) {
+    if (!state.statsPanel) return;
+    if (event.key === 'Escape') { event.preventDefault(); closeSessionStats(true); }
+    else if (event.key === 'Tab' && event.target === byId('session-stats-panel')) closeSessionStats(true);
+  });
+  window.addEventListener('resize', positionSessionStats);
+  document.addEventListener('scroll', positionSessionStats, true);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden && state.ready) refreshSessionStats(); scheduleStatsRefresh(); });
   byId('chat-form').addEventListener('submit', sendMessage);
   ui.input.addEventListener('input', function () {
     ui.input.style.height = 'auto';
@@ -1518,6 +1696,7 @@
     if (!state.busy || state.abort) return;
     try {
       const result = await json('/api/session');
+      if (result.sessionStats) acceptSessionStats(result.sessionStats, true);
       (result.pendingApprovals || []).forEach(showApproval);
       if (result.contextStats) updateContext(result.contextStats);
       if (!result.busy) {

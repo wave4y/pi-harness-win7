@@ -210,6 +210,8 @@ async function main() {
   assert.strictEqual(groupedAsset.status, 200);
   assert(groupedAsset.headers['content-type'].includes('javascript'));
   assert(groupedAsset.text.includes('SessionGroups'));
+  const statsStyle = await request('GET', '/session-stats.css', undefined, { token: false });
+  assert.strictEqual(statsStyle.status, 200); assert(statsStyle.headers['content-type'].includes('css'));
 
   assert.strictEqual((await request('POST', '/api/settings', { workspace, model: 'integration-model', baseUrl, apiKey: secret }, { contentType: 'text/plain' })).status, 415);
   const settings = await request('POST', '/api/settings', { workspace, model: 'integration-model', baseUrl, apiKey: secret });

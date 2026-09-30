@@ -12,6 +12,7 @@ import { validateContextLimits, deriveContextBudget } from './context';
 import { McpManager, validateMcpConfig, testMcpServer } from './mcp';
 import { discoverSkills, createSkillTools, skillPrompt, validateSkillDirectories } from './skills';
 import { autoCompact, deriveCompactionSettings } from './compaction';
+import { calculateSessionStats } from './session-stats';
 import { exportPiJsonl, exportSessionHtml, forkPiMessages, piSessionTree } from './pi-session';
 import { validatePiResourceSettings, loadPiResources, buildPiResourcePrompt, expandPromptTemplate } from './pi-resources';
 import { renderDshPrompt, getDshPromptPresets } from './dsh-prompts';
@@ -84,6 +85,7 @@ let extensions = {
 let mcpStatus: any[] = [];
 let contextStats: any = null;
 let compactionState: any = null;
+let summaryUsage: any[] = [];
 let approvalQueue: ApprovalQueue | null = null;
 let activeRun: AbortController | null = null;
 const environmentKeyUrl = config.baseUrl;
@@ -129,6 +131,7 @@ function restoreSession(savedSession: any) {
   config.permissionMode = validPermissionMode(savedSession.permissionMode) ? savedSession.permissionMode : 'workspace-write';
   contextStats = matchingContextStats(savedSession.contextStats);
   compactionState = savedSession.compactionState || null;
+  summaryUsage = Array.isArray(savedSession.summaryUsage) ? savedSession.summaryUsage.filter((entry: any) => entry && entry.role === 'assistant') : [];
   lastRunInterrupted = !!savedSession.runInProgress || !!savedSession.lastRunInterrupted;
   // A process can stop after requesting or executing a tool but before saving its
   // result. Record the uncertainty; never replay a possibly completed write.
@@ -161,7 +164,8 @@ function restoreSession(savedSession: any) {
 function saveJson(file: string, value: any) {
   saveJsonAtomic(file, value);
 }
-function sessionRecord() { return {sessionId, name: sessionName, parentSessionId, undeliveredMessages, pendingQueue, runInProgress, interruptedAssistant, lastRunInterrupted, ...config, contextStats, compactionState, messages, events}; }
+function sessionRecord() { return {sessionId, name: sessionName, parentSessionId, undeliveredMessages, pendingQueue, runInProgress, interruptedAssistant, lastRunInterrupted, ...config, contextStats, compactionState, summaryUsage, messages, events}; }
+function currentSessionStats() { return calculateSessionStats({sessionId, messages: activeAgent ? activeAgent.state.messages : messages, summaryUsage}); }
 function saveSession() { saveJson(sessionPath(), sessionRecord()); }
 function archiveSession() {
   if (messages.length || undeliveredMessages.length || sessionName) saveJson(path.join(stateDir, 'archive-' + sessionId + '.json'), sessionRecord());
@@ -227,7 +231,7 @@ function compactionInfo() {
 }
 function workspaceMissing() { try { return !fs.statSync(config.workspace).isDirectory(); } catch (_) { return true; } }
 function storageView() { return {directory: stateDir, credentialStorage: 'local-file', migration, warnings: storageWarnings}; }
-function bootstrap() { return {...config, appVersion: '0.5.1', storage: storageView(), workspaceMissing: workspaceMissing(), lastRunInterrupted, contextBudget: deriveContextBudget(config.contextWindow), csrfToken, hasApiKey: !!apiKey, sessionId, busy, name: sessionName, queue: queueState, undeliveredMessages, engine: 'Pi 0.51.6 · Web 兼容版', allowedExecutables, permissionModes, contextStats, lastCompaction: compactionInfo(), pendingApprovals: approvalQueue ? approvalQueue.list() : []}; }
+function bootstrap() { return {...config, appVersion: '0.6.0', storage: storageView(), workspaceMissing: workspaceMissing(), lastRunInterrupted, contextBudget: deriveContextBudget(config.contextWindow), csrfToken, hasApiKey: !!apiKey, sessionId, busy, name: sessionName, queue: queueState, undeliveredMessages, engine: 'Pi 0.51.6 · Web 兼容版', allowedExecutables, permissionModes, contextStats, sessionStats: currentSessionStats(), lastCompaction: compactionInfo(), pendingApprovals: approvalQueue ? approvalQueue.list() : []}; }
 
 function systemPrompt(skills: any[], tools: any[]) {
   const resources = loadPiResources(config.workspace, config.piResources);
@@ -247,6 +251,10 @@ async function compactRequest(context: any, signal: any, send: (event: any) => v
       const response = await streamCompatible(model, {
         systemPrompt: options.systemPrompt, messages: [{role: 'user', content: [{type: 'text', text: prompt}], timestamp: Date.now()}], tools: [],
       }, {apiKey, signal: options.signal, allowTruncation: false}).result();
+      // Store only request metadata; summaries and prompts remain in their existing records.
+      summaryUsage.push({role: 'assistant', sourceMessageCount: context.messages.length, timestamp: response.timestamp, stopReason: response.stopReason, usage: response.usage, usageReported: response.usageReported, cacheUsageReported: response.cacheUsageReported, metrics: response.metrics});
+      saveSession();
+      send({type: 'session_stats', stats: currentSessionStats()});
       if (['error', 'aborted'].includes(response.stopReason)) throw new Error(response.errorMessage || '摘要请求未完成');
       if (response.content.some((item: any) => item.type === 'toolCall')) throw new Error('摘要模型意外返回工具调用');
       return plainContent(response.content);
@@ -327,14 +335,18 @@ async function chat(req: http.IncomingMessage, res: http.ServerResponse, input: 
     if (controller.signal.aborted) throw new Error('已取消');
     const ordinary = createLocalTools(config.workspace, {allowedExecutables});
     const unrestricted = createLocalTools(config.workspace, {allowedExecutables, allowOutsideWorkspace: true, allowAnyExecutable: true});
+    const toolDurations = new Map<string, number>();
     const allTools = [...ordinary, ...createSkillTools(found.skills), ...mcpTools];
     const tools = allTools.map((tool: any) => ({...tool, execute: async (id: string, args: any, signal: any, onUpdate: any) => {
+      toolDurations.set(id, 0);
       const reason = approvalReason(config.permissionMode, config.workspace, tool, args);
       if (reason) await approvals.request(id, tool.name, args, reason, signal);
       if (signal && signal.aborted) throw new Error('已取消');
       const canExpand = !!reason || config.permissionMode === 'danger-full-access';
       const effective = canExpand ? unrestricted.find(candidate => candidate.name === tool.name) || tool : tool;
-      return effective.execute(id, args, signal, onUpdate);
+      const started = process.hrtime();
+      try { return await effective.execute(id, args, signal, onUpdate); }
+      finally { const elapsed = process.hrtime(started); toolDurations.set(id, elapsed[0] * 1000 + elapsed[1] / 1e6); }
     }}));
     const agent = new Agent({
       initialState: {
@@ -374,7 +386,14 @@ async function chat(req: http.IncomingMessage, res: http.ServerResponse, input: 
         interruptedAssistant = event.message;
         if (Date.now() - lastPartialSave >= 1000) { lastPartialSave = Date.now(); checkpoint(); }
       }
-      if (event.type === 'message_end') { interruptedAssistant = null; checkpoint(); }
+      if (event.type === 'message_end') {
+        if (event.message.role === 'toolResult' && toolDurations.has(event.message.toolCallId)) {
+          event.message.executionDurationMs = toolDurations.get(event.message.toolCallId);
+          toolDurations.delete(event.message.toolCallId);
+        }
+        interruptedAssistant = null; checkpoint();
+        send({type: 'session_stats', stats: currentSessionStats()});
+      }
     });
     await agent.prompt(userMessage);
     messages = agent.state.messages;
@@ -542,8 +561,9 @@ const server = http.createServer(async (req, res) => {
         saveSession();
         json(res, 200, bootstrap()); return;
       }
+      if (url.pathname === '/api/session/stats' && req.method === 'GET') { json(res, 200, currentSessionStats()); return; }
       if (url.pathname === '/api/session' && req.method === 'GET') {
-        json(res, 200, {sessionId, name: sessionName, parentSessionId, queue: queueState, undeliveredMessages, busy, lastRunInterrupted, permissionMode: config.permissionMode, contextStats, lastCompaction: compactionInfo(), pendingApprovals: approvalQueue ? approvalQueue.list() : [], messages: messages.filter(m => m.role === 'user' || m.role === 'assistant').map(m => ({role: m.role, content: plainContent(m.content), error: m.errorMessage})), events}); return;
+        json(res, 200, {sessionId, name: sessionName, parentSessionId, queue: queueState, undeliveredMessages, busy, lastRunInterrupted, permissionMode: config.permissionMode, contextStats, sessionStats: currentSessionStats(), lastCompaction: compactionInfo(), pendingApprovals: approvalQueue ? approvalQueue.list() : [], messages: messages.filter(m => m.role === 'user' || m.role === 'assistant').map(m => ({role: m.role, content: plainContent(m.content), error: m.errorMessage})), events}); return;
       }
       if (url.pathname === '/api/queue' && req.method === 'POST') {
         const body = await readBody(req);
@@ -577,6 +597,7 @@ const server = http.createServer(async (req, res) => {
         const sourceId = sessionId; archiveSession();
         sessionId = crypto.randomBytes(12).toString('hex'); parentSessionId = sourceId;
         sessionName = sessionName ? sessionName + ' · 分支' : '';
+        summaryUsage = summaryUsage.filter(entry => Number.isInteger(entry.sourceMessageCount) && entry.sourceMessageCount <= forked.length);
         messages = forked; undeliveredMessages = []; contextStats = null; compactionState = null; lastRunInterrupted = false;
         const ids = new Set(forked.filter((item: any) => item.role === 'toolResult').map((item: any) => item.toolCallId));
         events = events.filter(event => ids.has(event.id)); saveSession();
@@ -612,7 +633,7 @@ const server = http.createServer(async (req, res) => {
         ensureIdle();
         // Archive the current session before starting a fresh context.
         archiveSession();
-        sessionId = crypto.randomBytes(12).toString('hex'); sessionName = ''; parentSessionId = ''; undeliveredMessages = []; messages = []; events = []; contextStats = null; compactionState = null; lastRunInterrupted = false; saveSession();
+        sessionId = crypto.randomBytes(12).toString('hex'); sessionName = ''; parentSessionId = ''; undeliveredMessages = []; messages = []; events = []; contextStats = null; compactionState = null; summaryUsage = []; lastRunInterrupted = false; saveSession();
         json(res, 200, {sessionId}); return;
       }
       if (url.pathname === '/api/cancel' && req.method === 'POST') { if (activeRun) activeRun.abort(); if (activeAgent) activeAgent.abort(); if (approvalQueue) approvalQueue.cancel(); json(res, 200, {ok: true}); return; }
@@ -623,7 +644,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method !== 'GET' && req.method !== 'HEAD') fail('方法不支持', 405);
     const publicDir = path.join(__dirname, 'public');
     const filename = url.pathname === '/' ? 'index.html' : decodeURIComponent(url.pathname.slice(1));
-    const isRootAsset = ['index.html', 'app.js', 'session-groups.js', 'styles.css', 'style.css', 'favicon.svg'].includes(filename);
+    const isRootAsset = ['index.html', 'app.js', 'session-groups.js', 'session-stats.css', 'styles.css', 'style.css', 'favicon.svg'].includes(filename);
     const isDshAsset = /^dsh\/[a-zA-Z0-9_./-]+\.(css|woff2?|svg|png|txt)$/.test(filename) && !filename.split('/').includes('..');
     if (!isRootAsset && !isDshAsset) fail('文件不存在', 404);
     const target = path.join(publicDir, filename);

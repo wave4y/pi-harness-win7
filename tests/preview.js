@@ -33,6 +33,7 @@ const mock = http.createServer((req, res) => {
       event({delta: {content: '已读取并修改 hello.txt。\n'}, finish_reason: null});
       event({delta: {content: '这是离线模拟模型对真实 Pi 文件工具的验证，没有调用外部模型。'}, finish_reason: 'stop'});
     }
+    res.write('data: ' + JSON.stringify({choices: [], usage: {prompt_tokens: 1000, completion_tokens: 80, total_tokens: 1080, prompt_tokens_details: {cached_tokens: 750}}}) + '\n\n');
     res.end('data: [DONE]\n\n');
   });
 });

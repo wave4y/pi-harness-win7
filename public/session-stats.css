@@ -1,0 +1,133 @@
+/* DeepSeek Harness StatsPills.module.css + stat-dialog.module.css, adapted
+   from commit 639ed015397290b3745d163aafe02ffee4aa3f84. See dsh/PROVENANCE.txt. */
+.dsh-session-stats {
+  display: flex;
+  justify-content: flex-start;
+  gap: 12px;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  font-size: calc(var(--dsh-content-font-size-secondary, 13px) - 1px);
+  line-height: calc(20px + var(--dsh-content-font-delta-secondary, 0px));
+}
+.dsh-stat-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 1px 8px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--dsw-alias-label-tertiary);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  line-height: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.dsh-stat-pill:hover,
+.dsh-stat-pill[aria-expanded='true'] {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-secondary);
+}
+.dsh-stat-pill .icon,
+.dsh-stat-title-label .icon {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  stroke-width: 1;
+  stroke-linecap: butt;
+  stroke-linejoin: miter;
+}
+.dsh-stat-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dsh-stat-separator {
+  color: var(--dsw-alias-separator-primary);
+  margin: 0 6px;
+}
+.dsh-stat-panel {
+  position: fixed;
+  z-index: 1100;
+  box-sizing: border-box;
+  width: max-content;
+  min-width: min(300px, calc(100vw - 24px));
+  max-width: min(440px, calc(100vw - 24px));
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
+  padding: 16px;
+  border: 0;
+  border-radius: var(--dsw-radius-lg);
+  background: var(--dsw-specific-menu);
+  backdrop-filter: var(--dsw-menu-backdrop-filter);
+  --dsw-elevation-stroke-color: var(--dsw-alias-border-l1);
+  box-shadow: var(--dsw-elevation-prominent);
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-secondary);
+  cursor: default;
+}
+.dsh-stat-panel:focus { outline: none; }
+.dsh-stat-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 8px;
+  color: var(--dsw-alias-label-primary);
+  font-weight: 500;
+}
+.dsh-stat-title-rule {
+  margin-bottom: 10px;
+  border-top: .5px solid var(--dsw-alias-border-l2);
+}
+.dsh-stat-title-value { font-variant-numeric: tabular-nums; }
+.dsh-stat-title-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.dsh-stat-details {
+  display: grid;
+  grid-template-columns: minmax(76px, auto) minmax(0, 1fr);
+  gap: 6px 16px;
+  margin: 0;
+  color: var(--dsw-alias-label-tertiary);
+}
+.dsh-stat-details dt,
+.dsh-stat-details dd { min-width: 0; margin: 0; }
+.dsh-stat-details dd {
+  color: var(--dsw-alias-label-secondary);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.dsh-stat-notes {
+  max-width: 360px;
+  margin: 12px 0 0;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11px;
+  line-height: 17px;
+  white-space: pre-line;
+}
+.stats-composer-dock.has-session-stats {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 8px;
+  align-items: center;
+}
+.has-session-stats #session-stats { grid-column: 1; grid-row: 1; }
+.has-session-stats #context-usage { grid-column: 2; grid-row: 1; justify-self: end; }
+.has-session-stats #session-status { grid-column: 1; grid-row: 2; }
+.has-session-stats #composer-hint { grid-column: 2; grid-row: 2; justify-self: end; }
+@media (max-width: 720px) {
+  .has-session-stats #session-stats { grid-column: 1 / -1; flex-wrap: wrap; gap: 2px 8px; }
+  .has-session-stats #context-usage { grid-row: 2; }
+  .dsh-stat-details { gap: 6px 12px; }
+}
+
+#session-stats-panel-icon{display:inline-flex}

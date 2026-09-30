@@ -109,7 +109,7 @@ function writeNotices(packages) {
 async function main() {
   fs.mkdirSync(output, { recursive: true });
   const results = {};
-  const entries = { server: 'src/server.ts', persistence: 'src/persistence.ts', tools: 'src/local-tools.ts', folders: 'src/folder-browser.ts', context: 'src/context.ts', permissions: 'src/permissions.ts', mcp: 'src/mcp.ts', skills: 'src/skills.ts', compaction: 'src/compaction.ts', session: 'src/pi-session.ts', provider: 'src/provider.ts', 'pi-resources': 'src/pi-resources.ts', 'dsh-prompts': 'src/dsh-prompts.ts' };
+  const entries = { server: 'src/server.ts', persistence: 'src/persistence.ts', 'session-stats': 'src/session-stats.ts', tools: 'src/local-tools.ts', folders: 'src/folder-browser.ts', context: 'src/context.ts', permissions: 'src/permissions.ts', mcp: 'src/mcp.ts', skills: 'src/skills.ts', compaction: 'src/compaction.ts', session: 'src/pi-session.ts', provider: 'src/provider.ts', 'pi-resources': 'src/pi-resources.ts', 'dsh-prompts': 'src/dsh-prompts.ts' };
   for (const name of Object.keys(entries)) {
     const result = await esbuild.build({
       absWorkingDir: root,
@@ -167,7 +167,7 @@ async function main() {
     });
     fs.writeFileSync(path.join(output, 'public', name), browserResult.code);
   }
-  for (const filename of ['style.css', 'dsh/base.css', 'dsh/design-platform.css', 'dsh/gradient-shadow-text.css', 'dsh/brand-font.css', 'dsh/components.css']) {
+  for (const filename of ['style.css', 'session-stats.css', 'dsh/base.css', 'dsh/design-platform.css', 'dsh/gradient-shadow-text.css', 'dsh/brand-font.css', 'dsh/components.css']) {
     const source = path.join(root, 'public', filename);
     if (!fs.existsSync(source)) continue;
     const compiled = await esbuild.transform(fs.readFileSync(source, 'utf8'), {target: ['chrome102'], loader: 'css', legalComments: 'inline'});

@@ -163,6 +163,10 @@ async function turn(round) {
   assert.strictEqual(record.messages.filter(message => message.role === 'user').length, round, 'Raw user history must grow through repeated compactions');
   assert.strictEqual(record.messages.filter(message => message.role === 'toolResult').length, round * 2, 'Full raw tool history must remain on disk');
   assert.strictEqual(record.messages.length, round * 5);
+  assert.strictEqual(session.sessionStats.turns, round);
+  assert.strictEqual(session.sessionStats.steps, round * 2);
+  assert.strictEqual(session.sessionStats.coverage.toolTimedCalls, round * 2);
+  assert(session.sessionStats.summary.requests >= metrics[phase].compactions);
   assert.strictEqual(JSON.stringify(record.messages[0].content).includes(goal), true);
   assert(record.contextStats.estimatedTokens <= record.contextStats.inputBudget);
   assert.strictEqual(record.contextStats.droppedMessages, 0);
@@ -184,10 +188,12 @@ async function runPhase(name, contextWindow, rounds) {
       assert(record.compactionState, 'Checkpoint should exist before restarting the long session');
       const previousState = JSON.stringify(record.compactionState);
       const previousMessages = JSON.stringify(record.messages);
+      const previousStats = await checkedApi('GET', '/api/session/stats');
       await stopServer();
       const restored = await startServer();
       assert.strictEqual(restored.contextWindow, contextWindow);
       assert.strictEqual(restored.sessionId, record.sessionId);
+      assert.deepStrictEqual(restored.sessionStats, previousStats);
       const saved = savedSession(record.sessionId);
       assert.strictEqual(JSON.stringify(saved.compactionState), previousState, 'Checkpoint must survive restart unchanged');
       assert.strictEqual(JSON.stringify(saved.messages), previousMessages, 'All history must survive restart unchanged');

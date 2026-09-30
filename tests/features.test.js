@@ -116,10 +116,11 @@ function startChat(message, route) {
 }
 
 function chunk(delta, finish) { return 'data: ' + JSON.stringify({choices: [{index: 0, delta: delta || {}, finish_reason: finish || null}]}) + '\n\n'; }
+const usageFrame = 'data: ' + JSON.stringify({choices: [], usage: {prompt_tokens: 100, completion_tokens: 20, total_tokens: 120, prompt_tokens_details: {cached_tokens: 25}}}) + '\n\n';
 function sendTool(res, name, args, id) {
-  res.end(chunk({tool_calls: [{index: 0, id, type: 'function', function: {name, arguments: JSON.stringify(args)}}]}) + chunk({}, 'tool_calls') + 'data: [DONE]\n\n');
+  res.end(chunk({tool_calls: [{index: 0, id, type: 'function', function: {name, arguments: JSON.stringify(args)}}]}) + chunk({}, 'tool_calls') + usageFrame + 'data: [DONE]\n\n');
 }
-function sendText(res, text) { res.end(chunk({content: text || '检查完成。'}) + chunk({}, 'stop') + 'data: [DONE]\n\n'); }
+function sendText(res, text) { res.end(chunk({content: text || '检查完成。'}) + chunk({}, 'stop') + usageFrame + 'data: [DONE]\n\n'); }
 
 const provider = http.createServer((req, res) => {
   const chunks = [];
@@ -247,6 +248,8 @@ async function main() {
     return response;
   };
   await configure(64000, 1536);
+  assert.strictEqual((await request('GET', '/api/session/stats', undefined, {token: false})).status, 403);
+  assert.strictEqual((await request('GET', '/api/session/stats')).json.steps, 0);
   assert.strictEqual((await request('POST', '/api/permissions', {mode: 'danger-full-access'}, {token: false})).status, 403);
   assert.strictEqual((await request('POST', '/api/permissions', {mode: 'invented'})).status, 400);
   let chat = startChat('WRITE:workspace direct');
@@ -255,6 +258,14 @@ async function main() {
   assert(!events.some(item => item.type === 'approval_request'));
   assert.strictEqual(toolResult(events, 'write_file').isError, false);
   assert.strictEqual(fs.readFileSync(insideFile, 'utf8'), 'workspace direct');
+  const firstStats = (await request('GET', '/api/session/stats')).json;
+  assert.strictEqual(firstStats.turns, 1); assert.strictEqual(firstStats.steps, 2);
+  assert.strictEqual(firstStats.usage.total, 240); assert.strictEqual(firstStats.usage.input, 150);
+  assert.strictEqual(firstStats.usage.cacheRead, 50); assert.strictEqual(firstStats.usage.output, 40);
+  assert.strictEqual(firstStats.usage.cacheHitRate, 0.25); assert.strictEqual(firstStats.usage.missingSteps, 0);
+  assert(firstStats.modelTimeMs >= 0); assert(firstStats.toolTimeMs >= 0);
+  assert.strictEqual(firstStats.coverage.toolTimedCalls, 1); assert.strictEqual(firstStats.coverage.toolCalls, 1);
+  assert(events.some(event => event.type === 'session_stats' && event.stats.steps === 2));
 
   await mode('read-only');
   chat = startChat('WRITE:denied');
@@ -335,6 +346,8 @@ async function main() {
   assertFinished(events);
 
   assert.strictEqual((await request('POST', '/api/session/new', {})).status, 200);
+  const resetStats = (await request('GET', '/api/session/stats')).json;
+  assert.strictEqual(resetStats.steps, 0); assert.strictEqual(resetStats.usage.total, 0); assert.strictEqual(resetStats.summary.requests, 0);
   const longOldPrompt = 'old context ' + 'x'.repeat(30000);
   events = await startChat(longOldPrompt).done;
   assertFinished(events);
@@ -352,6 +365,11 @@ async function main() {
   assert(events.some(item => item.type === 'compaction' && item.phase === 'done'));
   assert((await request('GET', '/api/session')).json.messages.some(item => item.content === longOldPrompt), 'Compaction erased saved history');
   const afterCompaction = (await request('GET', '/api/bootstrap')).json;
+  const accumulated = (await request('GET', '/api/session/stats')).json;
+  assert.strictEqual(accumulated.turns, 2); assert.strictEqual(accumulated.steps, 2);
+  assert.strictEqual(accumulated.usage.total, 240, 'Compaction must retain earlier token totals');
+  assert(accumulated.summary.requests > 0); assert(accumulated.summary.usage.total > 0);
+  assert.deepStrictEqual(accumulated, afterCompaction.sessionStats);
   const usage = afterCompaction.contextStats;
   assert.strictEqual(usage.estimated, true);
   assert.strictEqual(usage.droppedTurns, 0);
@@ -370,9 +388,14 @@ async function main() {
   assert(!events.some(item => item.type === 'error'));
   // Manual force uses the same real model summarization path and persists its checkpoint.
   const beforeManualCount = summaryRequests.length;
+  const beforeManualStats = (await request('GET', '/api/session/stats')).json;
   events = await startChat('', '/api/compact').done;
   assertFinished(events);
   assert(summaryRequests.length > beforeManualCount);
+  const afterManualStats = (await request('GET', '/api/session/stats')).json;
+  assert.deepStrictEqual(afterManualStats.usage, beforeManualStats.usage);
+  assert.strictEqual(afterManualStats.steps, beforeManualStats.steps);
+  assert(afterManualStats.summary.requests > beforeManualStats.summary.requests);
   const savedCheckpoint = (await request('GET', '/api/bootstrap')).json.lastCompaction;
   assert(savedCheckpoint && savedCheckpoint.summarizedMessageCount > 0);
   summaryMode = 'fail';
@@ -388,11 +411,13 @@ async function main() {
   assert(events.some(item => item.type === 'error'));
   assert.deepStrictEqual((await request('GET', '/api/bootstrap')).json.lastCompaction, savedCheckpoint);
   summaryMode = 'ok'; summaryStarted = null;
+  const statsBeforeRestart = (await request('GET', '/api/session/stats')).json;
   await stopServer();
   await startServer();
   const restarted = (await request('GET', '/api/bootstrap', undefined, {token: false})).json;
   token = restarted.csrfToken;
   assert.deepStrictEqual(restarted.lastCompaction, savedCheckpoint);
+  assert.deepStrictEqual(restarted.sessionStats, statsBeforeRestart);
   events = await startChat('RECOVER AFTER RESTART').done;
   assertFinished(events);
   assert(!events.some(item => item.type === 'error'));
@@ -423,6 +448,20 @@ async function main() {
   const forked = await request('POST','/api/session/fork',{});
   assert.strictEqual(forked.status,200,forked.text);assert.notStrictEqual(forked.json.sessionId,beforeFork.sessionId);
   assert.deepStrictEqual((await request('GET','/api/session')).json.messages,beforeFork.messages);
+  assert.deepStrictEqual(forked.json.sessionStats, {...beforeFork.sessionStats, sessionId: forked.json.sessionId});
+  assert(forked.json.sessionStats.summary.requests > 0);
+  const emptyWithOldSummary = await request('POST', '/api/session/new', {});
+  assert.strictEqual(emptyWithOldSummary.status, 200);
+  const clearedStats = (await request('GET', '/api/session/stats')).json;
+  assert.strictEqual(clearedStats.summary.requests, 0);
+  assert.strictEqual(clearedStats.steps, 0);
+  const restoredStats = await request('POST', '/api/session/open', {id: forked.json.sessionId});
+  assert.deepStrictEqual(restoredStats.json.sessionStats, forked.json.sessionStats);
+  const prefixFork = await request('POST', '/api/session/fork', {messageIndex: 0});
+  assert.strictEqual(prefixFork.status, 200, prefixFork.text);
+  assert.strictEqual(prefixFork.json.sessionStats.turns, 1); assert.strictEqual(prefixFork.json.sessionStats.steps, 0);
+  assert.strictEqual(prefixFork.json.sessionStats.summary.requests, 0, 'Do not inherit summaries generated after the fork prefix');
+  assert.strictEqual((await request('POST', '/api/session/open', {id: forked.json.sessionId})).status, 200);
   assert((await request('GET','/api/sessions')).json.sessions.some(entry=>entry.id===beforeFork.sessionId && entry.title==='中文命名'));
 
   // While an actual tool waits for approval, queue both native Pi delivery modes.

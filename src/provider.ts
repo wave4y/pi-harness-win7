@@ -47,19 +47,61 @@ function retryDelay(milliseconds: number, signal?: any): Promise<void> {
   });
 }
 
+function tokenCount(value: any): number | undefined {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : undefined;
+}
+
+function applyReportedUsage(message: any, usage: any): void {
+  if (!usage || typeof usage !== 'object' || Array.isArray(usage)) return;
+  let prompt = tokenCount(usage.prompt_tokens);
+  const output = tokenCount(usage.completion_tokens);
+  const detail = usage.prompt_tokens_details && typeof usage.prompt_tokens_details === 'object' && !Array.isArray(usage.prompt_tokens_details)
+    ? usage.prompt_tokens_details.cached_tokens : undefined;
+  const cached = tokenCount(detail);
+  const hit = tokenCount(usage.prompt_cache_hit_tokens);
+  const miss = tokenCount(usage.prompt_cache_miss_tokens);
+  // Invalid values are not measured zero. A later valid final usage chunk may
+  // still replace this incomplete/invalid record without interrupting the text.
+  for (const value of [usage.prompt_tokens, usage.completion_tokens, usage.total_tokens, detail, usage.prompt_cache_hit_tokens, usage.prompt_cache_miss_tokens]) {
+    if (value !== undefined && value !== null && tokenCount(value) === undefined) return;
+  }
+  let cacheRead = cached === undefined ? hit : cached;
+  if (cached !== undefined && hit !== undefined && cached !== hit) return;
+  if (prompt === undefined && cacheRead !== undefined && miss !== undefined) prompt = cacheRead + miss;
+  if (prompt === undefined || output === undefined || !Number.isSafeInteger(prompt + output)) return;
+  if (cacheRead === undefined && miss !== undefined && miss <= prompt) cacheRead = prompt - miss;
+  if ((cacheRead !== undefined && cacheRead > prompt) || (miss !== undefined && (miss > prompt || (cacheRead !== undefined && cacheRead + miss !== prompt)))) return;
+  const total = tokenCount(usage.total_tokens);
+  if (total !== undefined && total !== prompt + output) return;
+  message.usage.input = prompt - (cacheRead || 0);
+  message.usage.output = output;
+  message.usage.cacheRead = cacheRead || 0;
+  message.usage.totalTokens = total === undefined ? prompt + output : total;
+  message.usageReported = true;
+  message.cacheUsageReported = cacheRead !== undefined;
+}
+
 function responseError(status: number, body: string): any {
   // Error bodies can contain credentials. Inspect a bounded copy internally and
   // expose only a fixed message/status, never the provider's arbitrary text.
   let diagnostic = body;
+  let parameter = '', errorCode = '';
   try {
     const parsed = JSON.parse(body);
     const detail = parsed && parsed.error || parsed;
     diagnostic = detail && typeof detail === 'object' ? [detail.code, detail.type, detail.message].filter(value => typeof value === 'string').join(' ') : String(detail || '');
+    parameter = detail && typeof detail.param === 'string' ? detail.param : '';
+    errorCode = detail && typeof detail.code === 'string' ? detail.code : '';
   } catch (_) { /* Some gateways return plain text. */ }
   const overflow = status === 400 && /context[_ -](?:length|window)[_ -]exceeded|maximum context (?:length|window)|context (?:length|window).{0,80}(?:exceed|too (?:long|large)|limit)|prompt (?:is )?too long|上下文.{0,40}(?:超出|超过|上限)/i.test(diagnostic);
   const error: any = new Error(overflow ? '模型服务报告上下文超出窗口，请压缩会话或检查模型窗口设置' : '模型 API 返回 HTTP ' + status + '；请检查地址、模型、密钥和额度');
   error.statusCode = status;
   if (overflow) error.code = 'CONTEXT_OVERFLOW';
+  const streamParameter = /^(?:stream_options(?:\.include_usage)?|include_usage)$/i.test(parameter);
+  const unsupportedCode = /^(?:unsupported|unknown|unrecognized|unexpected)_(?:parameter|argument|field)$/i.test(errorCode);
+  const explicitUnsupported = /\b(?:unsupported|unknown|unrecognized|unexpected)\s+(?:request\s+)?(?:parameter|argument|field|option)s?(?:\s+supplied)?\s*[:=]?\s*['"`]*(?:stream_options(?:\.include_usage)?|include_usage)\b/i.test(diagnostic)
+    || /\b(?:stream_options(?:\.include_usage)?|include_usage)\b['"`]*\s*(?:is\s+|was\s+|are\s+)?(?:not\s+(?:supported|allowed|permitted)|unsupported|unrecognized|unexpected)\b/i.test(diagnostic);
+  if (status === 400 && !overflow && ((streamParameter && unsupportedCode) || explicitUnsupported)) error.code = 'STREAM_OPTIONS_UNSUPPORTED';
   error.retryable = [429, 500, 502, 503, 504].includes(status);
   return error;
 }
@@ -69,6 +111,10 @@ export function streamCompatible(model: any, context: any, options: any = {}): a
   const stream = new AssistantMessageEventStream();
   const message: any = {role: 'assistant', api: model.api, provider: model.provider, model: model.id,
     content: [], timestamp: Date.now(), stopReason: 'stop',
+    usageReported: false, cacheUsageReported: false,
+    metrics: {requestDurationMs: 0, requestCount: 0, timeToFirstTokenMs: null, outputDurationMs: null},
+    // Pi requires this cost shape, but custom endpoint prices are unknown. These
+    // compatibility placeholders are not reported charges or a price estimate.
     usage: {input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: {input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0}}};
   Promise.resolve().then(async () => {
     try {
@@ -77,18 +123,24 @@ export function streamCompatible(model: any, context: any, options: any = {}): a
       let activeContext = options.prepareRequest ? await options.prepareRequest(context, options.signal) : context;
       let transientRetries = 0;
       let overflowRetried = false;
+      let includeUsage = true;
       while (true) {
         if (options.signal && options.signal.aborted) throw new Error('已取消');
         const prepared = prepareContext(activeContext.messages, activeContext.systemPrompt || '', activeContext.tools || [], {contextWindow: model.contextWindow, maxOutputTokens: model.maxTokens}, {allowTruncation: options.allowTruncation !== false});
         if (options.onContext) options.onContext(prepared.stats);
         try {
-          await requestStream(model, {...activeContext, messages: prepared.messages}, options, message, stream);
+          await requestStream(model, {...activeContext, messages: prepared.messages}, options, message, stream, includeUsage);
           break;
         } catch (error) {
           const failure: any = error;
           // Once any assistant text or tool-call fragment arrived, replaying the
           // request could duplicate an answer or operation. Never retry that run.
-          const beforeOutput = message.content.length === 0;
+          const beforeOutput = message.content.length === 0 && message.metrics.timeToFirstTokenMs === null;
+          if (beforeOutput && includeUsage && failure.code === 'STREAM_OPTIONS_UNSUPPORTED' && !(options.signal && options.signal.aborted)) {
+            includeUsage = false;
+            if (options.onRetry) options.onRetry({reason: 'stream_options_unsupported', statusCode: 400, attempt: 1, delayMs: 0});
+            continue;
+          }
           if (beforeOutput && failure.code === 'CONTEXT_OVERFLOW' && options.autoCompactEnabled && options.prepareRequest && !overflowRetried) {
             overflowRetried = true;
             if (options.onRetry) options.onRetry({reason: 'context_overflow', attempt: 1, delayMs: 0});
@@ -116,11 +168,12 @@ export function streamCompatible(model: any, context: any, options: any = {}): a
   return stream;
 }
 
-function requestStream(model: any, context: any, options: any, message: any, stream: any): Promise<void> {
+function requestStream(model: any, context: any, options: any, message: any, stream: any, includeUsage: boolean): Promise<void> {
   return new Promise((resolve, reject) => {
     const base = validateBaseUrl(model.baseUrl);
     const endpoint = new URL(base + '/chat/completions');
     const payload: any = {model: model.id, messages: toOpenAIMessages(context), stream: true, max_tokens: model.maxTokens || 4096};
+    if (includeUsage) payload.stream_options = {include_usage: true};
     if (context.tools && context.tools.length) {
       payload.tools = context.tools.map((tool: any) => ({type: 'function', function: {name: tool.name, description: tool.description, parameters: tool.parameters}}));
       payload.tool_choice = 'auto';
@@ -139,6 +192,8 @@ function requestStream(model: any, context: any, options: any, message: any, str
     let finishReason: string | null = null;
     const calls: {[key: number]: {index: number; raw: string}} = {};
     const client = endpoint.protocol === 'https:' ? https : http;
+    const requestStartedAt = Date.now();
+    let outputStartedAt: number | undefined;
     const req = client.request(endpoint, {method: 'POST', headers}, res => {
       response = res;
       res.setEncoding('utf8');
@@ -193,11 +248,15 @@ function requestStream(model: any, context: any, options: any, message: any, str
         } catch (error) { finish(error as Error); }
       });
     });
+    message.metrics.requestCount++;
     const abort = () => finish(new Error('已取消'));
     const deadline = setTimeout(() => finish(new Error('模型请求超过 180 秒')), 180000);
     function finish(error?: Error) {
       if (settled) return;
       settled = true; clearTimeout(deadline);
+      const finishedAt = Date.now();
+      message.metrics.requestDurationMs += Math.max(0, finishedAt - requestStartedAt);
+      if (outputStartedAt !== undefined) message.metrics.outputDurationMs = Math.max(0, finishedAt - outputStartedAt);
       if (options.signal) options.signal.removeEventListener('abort', abort);
       if (error) { if (response) response.destroy(); req.destroy(); reject(error); } else resolve();
     }
@@ -207,15 +266,19 @@ function requestStream(model: any, context: any, options: any, message: any, str
       if (data === '[DONE]') { terminal = true; return; }
       const event = JSON.parse(data);
       if (event.error) throw new Error('模型流返回错误，请检查 API 配置或额度');
-      if (event.usage) {
-        message.usage.input = event.usage.prompt_tokens || 0;
-        message.usage.output = event.usage.completion_tokens || 0;
-        message.usage.totalTokens = event.usage.total_tokens || message.usage.input + message.usage.output;
-      }
+      applyReportedUsage(message, event.usage);
       const choice = event.choices && event.choices[0];
       if (!choice) return;
       if (choice.finish_reason) finishReason = choice.finish_reason;
       const delta = choice.delta || {};
+      const actualDelta = (typeof delta.content === 'string' && delta.content.length > 0)
+        || (typeof delta.reasoning_content === 'string' && delta.reasoning_content.length > 0)
+        || (Array.isArray(delta.tool_calls) && delta.tool_calls.some((call: any) => call && ((typeof call.id === 'string' && call.id.length > 0)
+          || (call.function && ((typeof call.function.name === 'string' && call.function.name.length > 0) || (typeof call.function.arguments === 'string' && call.function.arguments.length > 0))))));
+      if (actualDelta && outputStartedAt === undefined) {
+        outputStartedAt = Date.now();
+        message.metrics.timeToFirstTokenMs = Math.max(0, outputStartedAt - requestStartedAt);
+      }
       if (typeof delta.content === 'string' && delta.content) {
         if (textIndex < 0) { textIndex = message.content.length; message.content.push({type: 'text', text: ''}); }
         message.content[textIndex].text += delta.content;

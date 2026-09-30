@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="/dsh/brand-font.css">
   <link rel="stylesheet" href="/dsh/components.css">
   <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/session-stats.css">
   <script src="/session-groups.js" defer></script>
   <script src="/app.js" defer></script>
 </head>
@@ -63,6 +64,18 @@
       <path d="M8 4.39209V9.89209" stroke="currentColor" />
       <path d="M8 10.8081V11.8081" stroke="currentColor" />
     </symbol>
+    <symbol id="i-stats-database" viewBox="0 0 16 16" fill="none" stroke-width="1">
+    <path d="M13.1967 5.1869C13.7232 4.77378 14.0003 4.30517 14.0001 3.82819C14.0003 3.3512 13.7232 2.88259 13.1967 2.46947C12.6702 2.05635 11.9128 1.71328 11.0006 1.47475C10.0885 1.23621 9.05371 1.11062 8.00039 1.1106C6.94707 1.11057 5.9123 1.23612 5.00009 1.47461C4.08742 1.71301 3.32948 2.05604 2.80249 2.46919C2.2755 2.88235 1.99805 3.35106 1.99805 3.82819C1.99805 4.30531 2.2755 4.77402 2.80249 5.18718C3.32948 5.60033 4.08742 5.94336 5.00009 6.18176C5.9123 6.42025 6.94707 6.5458 8.00039 6.54578C9.05371 6.54575 10.0885 6.42016 11.0006 6.18163C11.9128 5.94309 12.6702 5.60002 13.1967 5.1869Z" stroke="currentColor" />
+    <path d="M2 3.80371V11.7848" stroke="currentColor" />
+    <path d="M14 3.80371V11.7848" stroke="currentColor" />
+    <path d="M2 7.81396C2 8.60524 2.63214 9.36411 3.75736 9.92363C4.88258 10.4832 6.4087 10.7975 8 10.7975C9.5913 10.7975 11.1174 10.4832 12.2426 9.92363C13.3679 9.36411 14 8.60524 14 7.81396" stroke="currentColor" />
+    <path d="M2 11.7847C2 12.6081 2.63214 13.3977 3.75736 13.98C4.88258 14.5622 6.4087 14.8893 8 14.8893C9.5913 14.8893 11.1174 14.5622 12.2426 13.98C13.3679 13.3977 14 12.6081 14 11.7847" stroke="currentColor" />
+  </symbol>
+<symbol id="i-stats-gauge" viewBox="0 0 16 16" fill="none" stroke-width="1">
+    <path d="M3.4041 13.096C2.49514 12.187 1.87614 11.0288 1.62537 9.76798C1.37459 8.50716 1.50331 7.20028 1.99525 6.01261C2.48719 4.82494 3.32025 3.80981 4.3891 3.09557C5.45795 2.38134 6.71458 2.00008 8.0001 2C9.28563 2.00008 10.5423 2.38134 11.6111 3.09557C12.68 3.80981 13.513 4.82494 14.005 6.01261C14.4969 7.20028 14.6256 8.50716 14.3748 9.76798C14.1241 11.0288 13.5051 12.187 12.5961 13.096" stroke="currentColor" />
+    <path d="M8 8.49994L11.6114 4.88855" stroke="currentColor" />
+    <path d="M8 9.75C8.69036 9.75 9.25 9.19036 9.25 8.5C9.25 7.80964 8.69036 7.25 8 7.25C7.30964 7.25 6.75 7.80964 6.75 8.5C6.75 9.19036 7.30964 9.75 8 9.75Z" fill="currentColor" />
+  </symbol>
   </svg>
 
   <div class="app-shell workspace-layout">
@@ -113,7 +126,7 @@
                 <div class="dsh-input-trailing"><select id="queue-mode" class="dsh-input-select queue-mode" aria-label="运行时消息处理" hidden><option value="steer">插入指令</option><option value="followUp">排队跟进</option></select><button id="model-button" type="button" class="dsh-input-select" title="模型设置"><span id="model-label">选择模型</span></button><button id="cancel-button" type="button" class="dsh-input-primary cancel-button" title="停止生成" aria-label="停止生成" hidden><span class="stop-square"></span></button><button id="send-button" type="submit" class="dsh-input-primary" aria-label="发送消息" disabled><svg class="icon"><use href="#i-arrow"/></svg></button></div>
               </div>
             </form>
-            <div class="dsh-input-dock"><span id="session-status" class="session-status">准备就绪</span><span id="composer-hint">Enter 发送 · Shift + Enter 换行</span><button id="context-usage" type="button" class="context-usage" title="上下文设置">上下文 —</button></div>
+            <div class="dsh-input-dock stats-composer-dock"><div id="session-stats" class="dsh-session-stats" aria-label="当前会话统计" hidden><button id="session-stats-time" type="button" class="dsh-stat-pill" aria-haspopup="dialog" aria-expanded="false" aria-controls="session-stats-panel" title="会话统计"><svg class="icon" aria-hidden="true"><use href="#i-stats-gauge"/></svg><span id="session-stats-time-label" class="dsh-stat-label"></span></button><button id="session-stats-usage" type="button" class="dsh-stat-pill" aria-haspopup="dialog" aria-expanded="false" aria-controls="session-stats-panel" title="Token 用量"><svg class="icon" aria-hidden="true"><use href="#i-stats-database"/></svg><span id="session-stats-usage-label" class="dsh-stat-label"></span></button></div><span id="session-status" class="session-status">准备就绪</span><span id="composer-hint">Enter 发送 · Shift + Enter 换行</span><button id="context-usage" type="button" class="context-usage" title="上下文设置">上下文 —</button></div>
           </div>
         </div>
       </div>
@@ -177,6 +190,7 @@
     </form>
   </dialog>
 
+  <div id="session-stats-panel" class="dsh-stat-panel" role="dialog" aria-labelledby="session-stats-title" tabindex="-1" hidden><div class="dsh-stat-title"><span class="dsh-stat-title-label"><span id="session-stats-panel-icon"></span><span id="session-stats-title">会话统计</span></span><span id="session-stats-headline" class="dsh-stat-title-value"></span></div><div class="dsh-stat-title-rule" aria-hidden="true"></div><dl id="session-stats-details" class="dsh-stat-details"></dl><p id="session-stats-notes" class="dsh-stat-notes" hidden></p></div>
   <div id="permission-menu" class="dsh-menu-list dsh-menu-portal permission-menu" role="menu" aria-label="访问模式" hidden></div>
   <div id="session-menu" class="dsh-menu-list dsh-menu-portal session-menu" role="menu" aria-label="会话操作菜单" hidden><button id="rename-session" type="button" class="dsh-menu-item" role="menuitem">重命名</button><button id="fork-session" type="button" class="dsh-menu-item" role="menuitem">从当前会话创建分支</button><div class="dsh-menu-separator"></div><button id="export-session-jsonl" type="button" class="dsh-menu-item" role="menuitem">导出 JSONL</button><button id="export-session-html" type="button" class="dsh-menu-item" role="menuitem">导出 HTML</button></div>
   <dialog id="rename-session-dialog" class="dsh-modal-dialog rename-dialog" aria-labelledby="rename-session-title"><form id="rename-session-form"><div class="dsh-modal-header"><h2 id="rename-session-title" class="dsh-modal-title">重命名会话</h2><button id="close-rename-session" type="button" class="dsh-modal-close" aria-label="关闭重命名"><svg class="icon"><use href="#i-close"/></svg></button></div><div class="settings-body"><label class="field-label" for="session-name">会话名称</label><input id="session-name" type="text" maxlength="120" required autocomplete="off"><p id="rename-error" class="inline-error" role="alert" hidden></p><div class="dialog-footer"><button id="cancel-rename-session" type="button" class="dsh-button-button dsh-button-md dsh-button-outline">取消</button><button id="save-session-name" type="submit" class="dsh-button-button dsh-button-md dsh-button-primary">保存名称</button></div></div></form></dialog>
