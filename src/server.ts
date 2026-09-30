@@ -227,7 +227,7 @@ function compactionInfo() {
 }
 function workspaceMissing() { try { return !fs.statSync(config.workspace).isDirectory(); } catch (_) { return true; } }
 function storageView() { return {directory: stateDir, credentialStorage: 'local-file', migration, warnings: storageWarnings}; }
-function bootstrap() { return {...config, appVersion: '0.5.0', storage: storageView(), workspaceMissing: workspaceMissing(), lastRunInterrupted, contextBudget: deriveContextBudget(config.contextWindow), csrfToken, hasApiKey: !!apiKey, sessionId, busy, name: sessionName, queue: queueState, undeliveredMessages, engine: 'Pi 0.51.6 · Web 兼容版', allowedExecutables, permissionModes, contextStats, lastCompaction: compactionInfo(), pendingApprovals: approvalQueue ? approvalQueue.list() : []}; }
+function bootstrap() { return {...config, appVersion: '0.5.1', storage: storageView(), workspaceMissing: workspaceMissing(), lastRunInterrupted, contextBudget: deriveContextBudget(config.contextWindow), csrfToken, hasApiKey: !!apiKey, sessionId, busy, name: sessionName, queue: queueState, undeliveredMessages, engine: 'Pi 0.51.6 · Web 兼容版', allowedExecutables, permissionModes, contextStats, lastCompaction: compactionInfo(), pendingApprovals: approvalQueue ? approvalQueue.list() : []}; }
 
 function systemPrompt(skills: any[], tools: any[]) {
   const resources = loadPiResources(config.workspace, config.piResources);

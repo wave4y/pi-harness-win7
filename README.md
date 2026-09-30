@@ -8,15 +8,15 @@
 
 ## 使用便携包
 
-升级到 0.5.0 时，先关闭旧版本的 Node 窗口，再运行新版启动器。新版固定使用 `%LOCALAPPDATA%\PiWin7Web`（无此变量时使用 `%APPDATA%\PiWin7Web`），以后换解压目录不会换数据目录。同一数据目录只能运行一个新版服务。
+升级到 0.5.1 时，先关闭旧版本的 Node 窗口，再运行新版启动器。新版固定使用 `%LOCALAPPDATA%\PiWin7Web`（无此变量时使用 `%APPDATA%\PiWin7Web`），以后换解压目录不会换数据目录。同一数据目录只能运行一个新版服务。
 
-1. 解压 `release/pi-win7-web-0.5.0-x64.zip` 到可写的短路径，例如 `D:\PiWeb`。
+1. 解压 `release/pi-win7-web-0.5.1-x64.zip` 到可写的短路径，例如 `D:\PiWeb`。
 2. 双击 `launch.vbs`。启动器直接运行随包提供的 `runtime/node.exe`，不启动 CMD 或 PowerShell。
 3. 在 Chrome 102 打开 `http://127.0.0.1:3080`。启动器会尝试使用系统默认浏览器；默认浏览器不是 Chrome 时手动打开此地址。
 4. 点击工作目录入口或设置中的“浏览”，在文件夹选择器里选择磁盘和目录，再确认。模型设置中填写模型 ID、OpenAI Chat Completions 兼容 API 地址和 API Key。
 5. 发送任务，例如“查看这个目录，解释项目结构”或“创建一个中文说明文件”。
 
-API 地址应是基础路径，例如 `https://api.deepseek.com/v1`，程序会追加 `/chat/completions`。本地兼容服务允许使用 `http://127.0.0.1:端口/v1`，远程服务必须使用 HTTPS。目前仅接入 Chat Completions 兼容接口，不包含 Anthropic 原生接口、Responses API、OAuth 登录、图片或推理模型专用参数。
+API 地址应是基础路径，例如 `https://api.deepseek.com/v1`，程序会追加 `/chat/completions`。本地、内网和远程兼容服务均支持 HTTP 或 HTTPS，例如 `http://192.168.1.20:8000/v1`。目前仅接入 Chat Completions 兼容接口，不包含 Anthropic 原生接口、Responses API、OAuth 登录、图片或推理模型专用参数。
 
 API Key 在设置中保存一次后，重启和升级都能继续使用。Key 按完整 API 基础地址分别绑定，保存在本机数据目录的 `credentials.json`（本机明文文件，未加密）；不会放进网页返回值、普通配置或会话导出。更换地址不会把旧 Key 发给新地址，切回原地址可继续使用对应 Key。“清除 Key”同时清除其备份。`PI_API_KEY` 环境变量仅在本次进程提供凭据，不自动写入文件。
 

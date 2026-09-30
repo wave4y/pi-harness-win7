@@ -110,8 +110,9 @@ function sessionFile(directory, record) {
 }
 function writeJson(file, value) { fs.mkdirSync(path.dirname(file), {recursive: true}); fs.writeFileSync(file, JSON.stringify(value)); }
 async function main() {
-  await new Promise(resolve => provider.listen(0, '127.0.0.1', resolve));
-  const baseUrl = 'http://127.0.0.1:' + provider.address().port + '/v1';
+  // Exercise credential persistence outside the former HTTP hostname whitelist.
+  await new Promise(resolve => provider.listen(0, '127.0.0.2', resolve));
+  const baseUrl = 'http://127.0.0.2:' + provider.address().port + '/v1';
   const oldPackage = path.join(installs, 'pi-win7-web-0.3.0-x64');
   const oldState = path.join(oldPackage, '.state');
   const originalId = 'a'.repeat(24);

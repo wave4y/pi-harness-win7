@@ -136,8 +136,7 @@ interface CredentialState { version: 1; entries: { [id: string]: CredentialEntry
 function canonicalBaseUrl(input: string): string {
   const url = new URL(input);
   if (url.username || url.password || url.search || url.hash) throw problem('API URL cannot contain credentials, query parameters or a fragment.');
-  const local = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
-  if (url.protocol !== 'https:' && !(local && url.protocol === 'http:')) throw problem('Remote API credentials require HTTPS.');
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') throw problem('API URL must use HTTP or HTTPS.');
   return url.href.replace(/\/+$/, '');
 }
 function validKey(value: any): boolean { return typeof value === 'string' && value.length > 0 && value.length <= 4096 && !/[\x00-\x1f\x7f]/.test(value); }

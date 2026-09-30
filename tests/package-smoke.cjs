@@ -1,7 +1,7 @@
 'use strict';
 const fs=require('fs'),path=require('path'),http=require('http'),assert=require('assert'),spawn=require('child_process').spawn;
 const packageRoot=path.resolve(process.argv[2]);
-assert.strictEqual(JSON.parse(fs.readFileSync(path.join(packageRoot,'dist/build-meta.json'),'utf8')).appVersion,'0.5.0');
+assert.strictEqual(JSON.parse(fs.readFileSync(path.join(packageRoot,'dist/build-meta.json'),'utf8')).appVersion,require('../package.json').version);
 for(const name of ['.state','node_modules','.npm-cache'])assert(!fs.existsSync(path.join(packageRoot,name)),'Private/development content in archive: '+name);
 const notices=fs.readFileSync(path.join(packageRoot,'dist/THIRD_PARTY_NOTICES.txt'),'utf8');assert(notices.includes('Pi coding-agent'));assert(notices.includes('DeepSeek'));assert(notices.includes('MIT License'));
 assert(fs.existsSync(path.join(packageRoot,'dist/public/session-groups.js')));
@@ -19,5 +19,5 @@ function request(method,url,body){return new Promise((ok,no)=>{const data=body==
  const check=await request('POST','/api/mcp/test',{id:'demo'});assert(check.json.connected,JSON.stringify(check));assert.deepStrictEqual(check.json.tools.map(t=>t.name),['echo','add']);
  const resources=(await request('GET','/api/pi/resources')).json;assert(resources.prompts.some(p=>p.name==='win7-review'));assert(resources.builtinPresets.some(p=>p.value==='standard'&&p.available));
  assert(output.includes('v12.22.12'));
- console.log('PASS extracted 0.5.0 ZIP: actual Node12 startup, clean archive, DSH presets, packaged Skill/template discovery and portable MCP demo handshake.');
+ console.log('PASS extracted '+require('../package.json').version+' ZIP: actual Node12 startup, clean archive, DSH presets, packaged Skill/template discovery and portable MCP demo handshake.');
 })().catch(e=>{console.error(e);process.exitCode=1;}).then(()=>{server.kill();});

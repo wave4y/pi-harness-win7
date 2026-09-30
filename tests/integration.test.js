@@ -180,8 +180,9 @@ async function stopServer() {
 }
 
 async function main() {
-  await new Promise(resolve => provider.listen(0, '127.0.0.1', resolve));
-  const baseUrl = 'http://127.0.0.1:' + provider.address().port + '/v1';
+  // Outside the former HTTP hostname whitelist; requests stay on the test machine.
+  await new Promise(resolve => provider.listen(0, '127.0.0.2', resolve));
+  const baseUrl = 'http://127.0.0.2:' + provider.address().port + '/v1';
   await startServer();
   const initial = await request('GET', '/api/bootstrap', undefined, { token: false });
   assert.strictEqual(initial.status, 200);

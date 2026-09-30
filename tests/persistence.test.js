@@ -133,8 +133,26 @@ check('credentials bind full API URL and clearing does not resurrect old backup'
   assert(!fs.readFileSync(path.join(dir, 'credentials.json.bak'), 'utf8').includes('replacement-key'));
   write(path.join(dir, 'credentials.json'), 'broken'); assert.strictEqual(p.getStoredApiKey(dir, 'https://example.com/v1'), '');
   assert.strictEqual(p.getStoredApiKey(dir, 'https://example.com/other'), 'other-key');
-  for (const url of ['https://user:secret@example.com/v1', 'https://example.com/v1?token=secret', 'http://remote.example/v1']) assert.throws(() => p.setStoredApiKey(dir, url, 'key'));
+  for (const url of ['ftp://remote.example/v1', 'http://user:secret@example.com/v1', 'https://user:secret@example.com/v1', 'http://example.com/v1?token=secret', 'https://example.com/v1?token=secret', 'http://example.com/v1#fragment', 'https://example.com/v1#fragment']) assert.throws(() => p.setStoredApiKey(dir, url, 'key'));
   p.setStoredApiKey(dir, 'http://127.0.0.1:1234/v1', 'local-key'); assert.strictEqual(p.getStoredApiKey(dir, 'http://127.0.0.1:1234/v1'), 'local-key');
+});
+check('remote HTTP keys persist and recover independently from HTTPS and other endpoints', () => {
+  const dir = folder('http-credentials');
+  p.setStoredApiKey(dir, 'http://REMOTE.EXAMPLE:80/v1/', 'http-fixture-key');
+  assert.strictEqual(p.getStoredApiKey(dir, 'http://remote.example/v1'), 'http-fixture-key');
+  assert.strictEqual(p.getStoredApiKey(dir, 'https://remote.example/v1'), '', 'Changing protocol must not reuse the HTTP key');
+  p.setStoredApiKey(dir, 'https://remote.example/v1', 'https-fixture-key');
+  p.setStoredApiKey(dir, 'http://192.168.1.2:8080/api/v1', 'lan-fixture-key');
+  assert.strictEqual(p.getStoredApiKey(dir, 'http://remote.example:8080/v1'), '');
+  assert.strictEqual(p.getStoredApiKey(dir, 'http://remote.example/other'), '');
+  write(path.join(dir, 'credentials.json'), 'damaged');
+  assert.strictEqual(p.getStoredApiKey(dir, 'http://remote.example/v1'), 'http-fixture-key');
+  assert.strictEqual(p.getStoredApiKey(dir, 'https://remote.example/v1'), 'https-fixture-key');
+  assert.strictEqual(p.getStoredApiKey(dir, 'http://192.168.1.2:8080/api/v1/'), 'lan-fixture-key');
+  p.clearStoredApiKey(dir, 'http://remote.example/v1');
+  write(path.join(dir, 'credentials.json'), 'damaged again');
+  assert.strictEqual(p.getStoredApiKey(dir, 'http://remote.example/v1'), '');
+  assert.strictEqual(p.getStoredApiKey(dir, 'https://remote.example/v1'), 'https-fixture-key', 'Clearing HTTP must not clear HTTPS');
 });
 check('state lock excludes live owner and release is idempotent', () => {
   const dir = folder('lock'), release = p.acquireStateLock(dir); assert.throws(() => p.acquireStateLock(dir), err => err.status === 409);

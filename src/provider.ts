@@ -6,8 +6,7 @@ import { prepareContext, validateContextLimits, validateRequestLimits } from './
 export function validateBaseUrl(value: string): string {
   const url = new URL(value);
   if (url.username || url.password || url.search || url.hash) throw new Error('API 地址不能包含凭据、查询参数或片段');
-  const local = ['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname);
-  if (url.protocol !== 'https:' && !(local && url.protocol === 'http:')) throw new Error('远程 API 必须使用 HTTPS；本机 API 可以使用 HTTP');
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') throw new Error('API 地址必须使用 HTTP 或 HTTPS');
   return url.href.replace(/\/+$/, '');
 }
 

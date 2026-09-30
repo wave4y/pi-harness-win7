@@ -1,11 +1,12 @@
 'use strict';
 const assert = require('assert');
 const http = require('http');
-const {createModel, streamCompatible} = require('../dist/provider.cjs');
+const {createModel, streamCompatible, validateBaseUrl} = require('../dist/provider.cjs');
 const secret = 'provider-error-body-secret-never-echo';
 let mode = '';
 let attempts = 0;
 let captures = [];
+let requestPaths = [];
 const sockets = new Set();
 function frame(delta, finish) { return 'data: ' + JSON.stringify({choices: [{index: 0, delta: delta || {}, finish_reason: finish || null}]}) + '\n\n'; }
 const server = http.createServer((req, res) => {
@@ -14,6 +15,7 @@ const server = http.createServer((req, res) => {
   req.on('end', () => {
     attempts++;
     captures.push(JSON.parse(Buffer.concat(chunks).toString('utf8')));
+    requestPaths.push(req.url);
     let status = 0;
     if (mode === 'transient' && attempts <= 3) status = [429, 502, 504][attempts - 1];
     if (mode === 'exhaust' || mode === 'cancel') status = 503;
@@ -38,7 +40,7 @@ function abortController() {
   const signal = {aborted: false, addEventListener(_type, listener) { listeners.add(listener); }, removeEventListener(_type, listener) { listeners.delete(listener); }};
   return {signal, abort() { signal.aborted = true; for (const listener of Array.from(listeners)) listener(); }};
 }
-function reset(value) { mode = value; attempts = 0; captures = []; }
+function reset(value) { mode = value; attempts = 0; captures = []; requestPaths = []; }
 async function fastBackoff(callback) {
   const original = global.setTimeout;
   // Preserve the production 2/4/8-second schedule in notifications while advancing
@@ -54,6 +56,36 @@ async function main() {
   assert.strictEqual(summaryModel.maxTokens, 3200, 'Trusted summary output must survive model creation');
   assert.throws(() => createModel(model.id, model.baseUrl, {contextWindow: 8192}, {maxOutputTokens: 513}), /内部请求/);
   const originalContext = {systemPrompt: 'System', tools: [], messages: [{role: 'user', content: 'old task'}, {role: 'assistant', content: [{type: 'text', text: 'earlier response'}], stopReason: 'stop'}, {role: 'user', content: 'latest request'}]};
+  const httpBases = [
+    ['http://MODEL.EXAMPLE:80/v1/', 'http://model.example/v1'],
+    ['http://192.168.1.2:8080/api/v1///', 'http://192.168.1.2:8080/api/v1'],
+    ['http://10.0.0.8:8000/', 'http://10.0.0.8:8000'],
+  ];
+  for (const invalid of ['ftp://model.example/v1', 'http://user:pass@model.example/v1', 'https://user@model.example/v1', 'http://model.example/v1?key=fixture', 'https://model.example/v1#fragment']) {
+    assert.throws(() => validateBaseUrl(invalid), 'Unsafe URL components must remain rejected');
+  }
+  assert.strictEqual(validateBaseUrl('https://MODEL.EXAMPLE:443/v1/'), 'https://model.example/v1');
+  const originalRequest = http.request;
+  let routedEndpoint;
+  // Validate and construct real remote HTTP endpoints, but route their socket to
+  // this offline fixture before any DNS lookup or external connection occurs.
+  http.request = function (endpoint, options, callback) {
+    routedEndpoint = new URL(endpoint.href);
+    const localEndpoint = new URL(endpoint.href);
+    localEndpoint.hostname = '127.0.0.1'; localEndpoint.port = String(server.address().port);
+    return originalRequest.call(http, localEndpoint, options, callback);
+  };
+  try {
+    for (const [input, normalized] of httpBases) {
+      reset('success');
+      assert.strictEqual(validateBaseUrl(input), normalized);
+      const remoteModel = createModel('http-test', validateBaseUrl(input), {contextWindow: 8192});
+      const response = await streamCompatible(remoteModel, originalContext, {apiKey: 'offline-http-fixture', allowTruncation: false}).result();
+      assert.strictEqual(response.stopReason, 'stop'); assert.strictEqual(attempts, 1);
+      assert.strictEqual(routedEndpoint.href, normalized + '/chat/completions');
+      assert.deepStrictEqual(requestPaths, [new URL(normalized + '/chat/completions').pathname]);
+    }
+  } finally { http.request = originalRequest; }
   async function invoke(options) {
     const stream = streamCompatible(model, originalContext, Object.assign({apiKey: 'client-key-distinct-from-body-secret', allowTruncation: false}, options || {}));
     const events = [];
@@ -128,7 +160,7 @@ async function main() {
   assert.strictEqual(attempts, 1);
   assert.strictEqual(outcome.message.stopReason, 'aborted');
   assert(Date.now() - started < 1000, 'Cancellation did not interrupt backoff');
-  console.log('PASS provider retry: bounded 2/4/8-second transient schedule, one forced overflow compaction, disabled/nonrecursive cases, no replay after partial/malformed SSE, secret-safe errors and abortable backoff.');
+  console.log('PASS provider retry: remote HTTP/LAN URL validation and chat paths (offline), rejected unsafe URL components, bounded 2/4/8-second transient schedule, one forced overflow compaction, disabled/nonrecursive cases, no replay after partial/malformed SSE, secret-safe errors and abortable backoff.');
 }
 main().catch(error => { console.error(error.stack || error); process.exitCode = 1; }).then(async () => {
   for (const socket of sockets) socket.destroy();
